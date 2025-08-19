@@ -1,6 +1,5 @@
 # AgenticSociety
-通过网盘分享的文件：db.rar
-链接: https://pan.baidu.com/s/1fW8nifSODqpoifsvAK1rug 提取码: 1235
+链接:https://pan.baidu.com/s/1UH1aIz85ckASXlCRRzBmUA?pwd=1234 提取码:1234 复制这段内容后打开百度网盘手机App，操作更方便哦
 #### Description
 This repo is to support our work in applying language model agents in the research of social and economic discipline. 
 

@@ -1,6 +1,5 @@
 # Agentic Society - 智能体社会模拟与分析平台
-通过网盘分享的文件：db.rar
-链接: https://pan.baidu.com/s/1fW8nifSODqpoifsvAK1rug 提取码: 1235
+链接:https://pan.baidu.com/s/1UH1aIz85ckASXlCRRzBmUA?pwd=1234 提取码:1234 复制这段内容后打开百度网盘手机App，操作更方便哦
 ## 项目简介
 
 Agentic Society 是一个用于创建、模拟和分析大规模智能体（Agent）社会的复杂系统。本项目的核心目标是探索当今的大语言模型（LLM）在多大程度上能够模拟真实人类社会的人格特质分布。
