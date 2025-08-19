@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from abc import ABC, abstractmethod
-
+import os
 from asociety.personality.personality_analysis import compute
 from studio.languages import LANGUAGES
 
@@ -73,9 +73,44 @@ class BaseCurvePanel(ABC):
         """
         pass
 
+    def _process_data_sources(self, model_sources):
+        """
+        Process a list of model data sources, add the human baseline,
+        check for file existence, and load the analysis data.
+        """
+        if not model_sources:
+            return []
+
+        human_db_path = 'data/db/backup/human.db'
+        if not os.path.exists(human_db_path):
+            messagebox.showerror("Error", f"Human baseline database not found: {human_db_path}")
+            return []
+
+        all_sources = [
+            {'name': 'human', 'path': human_db_path, 'style': {'color': 'purple', 'ls': '--'}},
+        ] + model_sources
+
+        # Check if all files exist
+        for source in all_sources:
+            if not os.path.exists(source['path']):
+                messagebox.showerror("Error", f"Database file not found: {source['path']}")
+                return []
+
+        # Load data into sources
+        try:
+            from asociety.personality.personality_analysis import get_personas_ana
+            for source in all_sources:
+                source['mdata'] = get_personas_ana(db_path=source['path'], dimension='age')
+        except Exception as e:
+            messagebox.showerror("Data Loading Error", f"Failed to load data: {e}")
+            return []
+            
+        return all_sources
+
     def run_analysis(self):
         try:
-            data_sources = self.get_data_sources()
+            model_sources = self.get_data_sources()
+            data_sources =  self._process_data_sources(model_sources)
             if not data_sources:
                 return
 

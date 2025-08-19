@@ -29,22 +29,10 @@ class CurveComparisonPanel(BaseCurvePanel):
             self.run_button.config(state=tk.NORMAL)
 
     def get_data_sources(self):
-        sources = [
-            {'name': 'human', 'path': 'data/db/backup/human.db', 'style': {'color': 'purple', 'ls': '--'}},
+        model_sources = [
             {'name': 'deepseek-chat', 'path': 'data/db/backup/deepseek-chat.db', 'style': {'color': 'blue', 'lw': 0.8}},
             {'name': 'deepseek-chat-antialign', 'path': 'data/db/backup/deepseek-chat-antialign.db', 'style': {'color': 'red', 'lw': 0.8}},
             {'name': 'deepseek-chat-narrative', 'path': 'data/db/backup/deepseek-chat-narrative.db', 'style': {'color': 'green', 'lw': 2.5}},
             {'name': 'wiki-fiction', 'path': 'data/db/backup/wiki/wiki-fiction.db', 'style': {'color': 'orange', 'ls': '-.'}}
         ]
-
-        # Check if all files exist
-        for source in sources:
-            if not os.path.exists(source['path']):
-                messagebox.showerror("Error", f"Database file not found: {source['path']}")
-                return []
-
-        # Load data into sources
-        for source in sources:
-            source['mdata'] = get_personas_ana(db_path=source['path'], dimension='age')
-            
-        return sources
+        return model_sources

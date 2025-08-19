@@ -56,32 +56,17 @@ class PersonalityAnalysis(BaseCurvePanel):
             self.submit_button.config(state=tk.NORMAL)
 
     def get_data_sources(self):
-        if not self.selected_file:
-            return []
-
-        human_db_path = 'data/db/backup/human.db'
-        if not os.path.exists(human_db_path):
-            messagebox.showerror("Error", f"Human baseline database not found: {human_db_path}")
-            return []
+        
 
 
         
         model_name = os.path.splitext(os.path.basename(self.selected_file))[0]
 
         sources = [
-            {'name': 'human', 'path': human_db_path, 'style': {'color': 'purple', 'ls': '--'}},
+
             {'name': model_name, 'path': self.selected_file, 'style': {'color': 'red', 'ls': '-', 'show_scatter': False}}
         ]
 
-        # Load data into sources
-        try:
-            # Load human data with 'All' sex filter for consistent baseline
-            sources[0]['mdata'] = get_personas_ana(db_path=sources[0]['path'])
-            # Load model data with selected filters
-            sources[1]['mdata'] = get_personas_ana(db_path=sources[1]['path'])
-        except Exception as e:
-            messagebox.showerror("Data Loading Error", f"Failed to load data: {e}")
-            return []
             
         return sources
 
