@@ -1,0 +1,270 @@
+> library(lavaan)
+> library(readr)
+> 
+> # 2. 读取数据
+> dat <- read_csv("d:/wiki-fiction.csv")
+
+[1mindexing[0m [34mwiki-fiction.csv[0m [=================================] [32m2.15GB/s[0m, eta: [36m 0s[0m
+                                                                                                                   
+Rows: 593 Columns: 121
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+dbl (121): persona_id, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I1...
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+> 
+> # 1) 定义因子和 facet
+> factors <- list(N=1,E=2,O=3,A=4,C=5)
+> facet_offsets <- c(0,30,60,90)
+> facet_starts  <- c(0,5,10,15,20,25)
+> 
+> # 2) 生成 30 个 facet 变量（均值）
+> for(f in names(factors)){
++   for(k in 1:6){
++     base <- factors[[f]] + facet_starts[k]
++     idxs <- base + facet_offsets
++     vname <- paste0(f, k)   # e.g., N1..N6, E1..E6
++     dat[[vname]] <- rowMeans(dat[paste0("I", idxs)], na.rm=TRUE)
++   }
++ }
+> facet_names <- paste0(rep(names(factors), each=6), 1:6)  # N1..N6,E1..E6,...
+> 
+> # 3) 构建 facet-level bifactor 模型语法
+> G_line <- paste0("G =~ ", paste(facet_names, collapse = " + "))
+> group_lines <- sapply(names(factors), function(f) {
++   paste0(f, " =~ ", paste0(f, 1:6, collapse = " + "))
++ })
+> 
+> # 4) 因子间协方差（G 不强制正交）
+> orth_lines <- c(
++   "N ~~ E","N ~~ O","N ~~ A","N ~~ C",
++   "E ~~ O","E ~~ A","E ~~ C",
++   "O ~~ A","O ~~ C",
++   "A ~~ C"
++ )
+> 
+> # 5) 残差相关：facet 内部 4 个 item 两两相关
+> resid_lines <- unlist(lapply(names(factors), function(f) {
++   sapply(1:6, function(k) {
++     # facet 内 4 个原始 item 编号
++     base <- factors[[f]] + facet_starts[k]
++     items <- paste0("I", base + facet_offsets)
++     comb <- combn(items, 2)
++     apply(comb, 2, function(x) sprintf("%s ~~ %s", x[1], x[2]))
++   })
++ }))
+> 
+> # 6) 拼接完整模型
+> model_bi_resid <- paste(
++   G_line,
++   paste(group_lines, collapse="\n"),
++   paste(orth_lines, collapse="\n"),
++   #paste(resid_lines, collapse="\n"),
++   sep="\n\n"
++ )
+> 
+> # 7) 拟合模型（facet-level 已近似连续，可用 MLR 或 WLSMV）
+> fit_facet <- cfa(model_bi_resid, data=dat, estimator="WLSMV", std.lv=TRUE, se="none")
+警告信息:
+1: lavaan->lav_options_est_dwls():  
+   estimator “DWLS” is not recommended for continuous data. Did you forget to 
+   set the ordered= argument? 
+2: lavaan->lav_test_satorra_bentler():  
+   could not invert information matrix needed for robust test statistic 
+3: lavaan->lav_object_post_check():  
+   some estimated ov variances are negative 
+4: lavaan->lav_object_post_check():  
+   covariance matrix of latent variables is not positive definite ; use 
+   lavInspect(fit, "cov.lv") to investigate. 
+>  summary(fit_facet, fit.measures = TRUE, standardized = TRUE)
+lavaan 0.6-19 ended normally after 92 iterations
+
+  Estimator                                       DWLS
+  Optimization method                           NLMINB
+  Number of model parameters                       105
+
+  Number of observations                           593
+
+Model Test User Model:
+                                              Standard      Scaled
+  Test Statistic                              4485.681          NA
+  Degrees of freedom                               360         360
+  P-value (Chi-square)                           0.000          NA
+  Scaling correction factor                                     NA
+  Shift parameter                                               NA
+                                                                  
+
+Model Test Baseline Model:
+
+  Test statistic                             27510.848    5444.651
+  Degrees of freedom                               435         435
+  P-value                                        0.000       0.000
+  Scaling correction factor                                  5.405
+
+User Model versus Baseline Model:
+
+  Comparative Fit Index (CFI)                    0.848          NA
+  Tucker-Lewis Index (TLI)                       0.816          NA
+                                                                  
+  Robust Comparative Fit Index (CFI)                            NA
+  Robust Tucker-Lewis Index (TLI)                               NA
+
+Root Mean Square Error of Approximation:
+
+  RMSEA                                          0.139          NA
+  90 Percent confidence interval - lower         0.136          NA
+  90 Percent confidence interval - upper         0.143          NA
+  P-value H_0: RMSEA <= 0.050                    0.000          NA
+  P-value H_0: RMSEA >= 0.080                    1.000          NA
+                                                                  
+  Robust RMSEA                                                  NA
+  90 Percent confidence interval - lower                        NA
+  90 Percent confidence interval - upper                        NA
+  P-value H_0: Robust RMSEA <= 0.050                            NA
+  P-value H_0: Robust RMSEA >= 0.080                            NA
+
+Standardized Root Mean Square Residual:
+
+  SRMR                                           0.164       0.164
+
+Parameter Estimates:
+
+
+Latent Variables:
+                   Estimate   Std.lv  Std.all
+  G =~                                       
+    N1                0.820    0.820    0.906
+    N2               -0.272   -0.272   -0.306
+    N3                0.579    0.579    0.671
+    N4                0.674    0.674    1.017
+    N5               -0.140   -0.140   -0.138
+    N6                0.810    0.810    0.935
+    E1                0.156    0.156    0.192
+    E2               -0.145   -0.145   -0.149
+    E3               -0.193   -0.193   -0.268
+    E4               -0.090   -0.090   -0.134
+    E5               -0.508   -0.508   -0.552
+    E6                0.190    0.190    0.215
+    O1                0.129    0.129    0.147
+    O2                0.465    0.465    0.502
+    O3                0.216    0.216    0.416
+    O4               -0.242   -0.242   -0.362
+    O5                0.249    0.249    0.346
+    O6                0.054    0.054    0.074
+    A1               -0.598   -0.598   -0.648
+    A2                0.626    0.626    0.521
+    A3                0.102    0.102    0.104
+    A4                0.473    0.473    0.426
+    A5                0.678    0.678    0.780
+    A6                0.198    0.198    0.205
+    C1               -0.391   -0.391   -0.509
+    C2               -0.313   -0.313   -0.295
+    C3                0.630    0.630    0.652
+    C4                0.014    0.014    0.018
+    C5               -0.417   -0.417   -0.443
+    C6               -0.064   -0.064   -0.054
+  N =~                                       
+    N1                0.916    0.916    1.012
+    N2                0.513    0.513    0.578
+    N3                0.812    0.812    0.941
+    N4                0.487    0.487    0.735
+    N5                0.870    0.870    0.857
+    N6                1.096    1.096    1.265
+  E =~                                       
+    E1                0.577    0.577    0.712
+    E2                0.681    0.681    0.704
+    E3               -0.309   -0.309   -0.429
+    E4               -0.141   -0.141   -0.208
+    E5                0.584    0.584    0.635
+    E6                0.722    0.722    0.815
+  O =~                                       
+    O1                0.581    0.581    0.664
+    O2                0.348    0.348    0.376
+    O3                0.327    0.327    0.631
+    O4                0.052    0.052    0.077
+    O5               -0.226   -0.226   -0.314
+    O6                0.583    0.583    0.799
+  A =~                                       
+    A1                1.253    1.253    1.359
+    A2                0.499    0.499    0.416
+    A3                0.769    0.769    0.783
+    A4                0.568    0.568    0.512
+    A5               -0.002   -0.002   -0.003
+    A6                0.644    0.644    0.666
+  C =~                                       
+    C1                0.773    0.773    1.007
+    C2                1.159    1.159    1.092
+    C3                0.294    0.294    0.305
+    C4                0.557    0.557    0.689
+    C5                1.059    1.059    1.127
+    C6                1.184    1.184    0.990
+
+Covariances:
+                   Estimate   Std.lv  Std.all
+  N ~~                                       
+    E                 0.164    0.164    0.164
+    O                 0.432    0.432    0.432
+    A                -0.616   -0.616   -0.616
+    C                -0.833   -0.833   -0.833
+  E ~~                                       
+    O                 0.708    0.708    0.708
+    A                 0.332    0.332    0.332
+    C                -0.557   -0.557   -0.557
+  O ~~                                       
+    A                 0.113    0.113    0.113
+    C                -0.578   -0.578   -0.578
+  A ~~                                       
+    C                 0.379    0.379    0.379
+  G ~~                                       
+    N                -0.610   -0.610   -0.610
+    E                -0.269   -0.269   -0.269
+    O                -0.141   -0.141   -0.141
+    A                 0.869    0.869    0.869
+    C                 0.603    0.603    0.603
+
+Variances:
+                   Estimate   Std.lv  Std.all
+   .N1                0.224    0.224    0.273
+   .N2                0.281    0.281    0.357
+   .N3                0.323    0.323    0.434
+   .N4                0.148    0.148    0.337
+   .N5                0.105    0.105    0.102
+   .N6               -0.024   -0.024   -0.033
+   .E1                0.348    0.348    0.530
+   .E2                0.399    0.399    0.426
+   .E3                0.418    0.418    0.806
+   .E4                0.437    0.437    0.954
+   .E5                0.087    0.087    0.102
+   .E6                0.301    0.301    0.383
+   .O1                0.434    0.434    0.565
+   .O2                0.566    0.566    0.660
+   .O3                0.135    0.135    0.503
+   .O4                0.382    0.382    0.855
+   .O5                0.387    0.387    0.751
+   .O6                0.199    0.199    0.373
+   .A1                0.225    0.225    0.264
+   .A2                0.259    0.259    0.179
+   .A3                0.226    0.226    0.235
+   .A4                0.218    0.218    0.177
+   .A5                0.299    0.299    0.396
+   .A6                0.261    0.261    0.279
+   .C1                0.204    0.204    0.346
+   .C2                0.124    0.124    0.110
+   .C3                0.226    0.226    0.243
+   .C4                0.334    0.334    0.511
+   .C5                0.121    0.121    0.137
+   .C6                0.116    0.116    0.081
+    G                 1.000    1.000    1.000
+    N                 1.000    1.000    1.000
+    E                 1.000    1.000    1.000
+    O                 1.000    1.000    1.000
+    A                 1.000    1.000    1.000
+    C                 1.000    1.000    1.000
+
+> # 8) 查看拟合指标
+> fitMeasures(fit_facet, c("cfi","tli","rmsea","srmr"))
+  cfi   tli rmsea  srmr 
+0.848 0.816 0.139 0.164 
+> 
+> 

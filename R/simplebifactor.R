@@ -2,7 +2,7 @@ library(lavaan)
 library(readr)
 
 # 2. 读取数据
-dat <- read_csv("d:/output1.csv")
+dat <- read_csv("d:/human-600-2.csv")
 
 # 1) 定义因子和 facet
 factors <- list(N=1,E=2,O=3,A=4,C=5)
