@@ -1,133 +1,495 @@
-# Agentic Society - 智能体社会模拟与分析平台
-链接:https://pan.baidu.com/s/1UH1aIz85ckASXlCRRzBmUA?pwd=1234 提取码:1234 复制这段内容后打开百度网盘手机App，操作更方便哦
-## 项目简介
+# 1. 项目简介
 
-Agentic Society 是一个用于创建、模拟和分析大规模智能体（Agent）社会的复杂系统。本项目的核心目标是探索当今的大语言模型（LLM）在多大程度上能够模拟真实人类社会的人格特质分布。
+本仓库支持将语言模型智能体应用于社会和经济学科研究，重点关注人格特质分析和模拟。
 
-项目通过以下工作流程实现这一目标：
+**实验数据下载：**  
+链接:https://pan.baidu.com/s/1UH1aIz85ckASXlCRRzBmUA?pwd=1234 提取码:1234  
+复制这段内容后打开百度网盘手机App，操作更方便哦
 
-1.  **人口样本框架生成**: 基于人口普查数据（如年龄、性别、职业等统计分布），通过插值方法生成一个结构化的“人口骨架”（Population Skeleton）。
-2.  **智能体画像丰富**: 利用大语言模型（LLM），将“人口骨架”中的基础信息丰富为具有详细背景、经历和生活细节的“智能体画像”（Agent Persona）。
-3.  **人格特质测试**: 将生成的“智能体画像”作为背景信息（Prompt），让智能体完成标准的心理学人格问卷（如 IPIP-NEO）。
-4.  **统计与分析**: 对智能体的人格测试结果进行深入的统计分析，并与真实世界的人类心理学研究数据进行比较，以评估 LLM 在模拟人格方面的能力和偏差。
+# 2. 系统架构与实现
 
-## 系统结构
+## 2.1 软件架构
 
-本系统主要由三部分组成：数据流水线、分析工具集和可视化工作室。
+系统由三个主要组件组成：
+1. **asociety包**：人物画像生成和人格评估的核心引擎组件
+2. **studio包**：用于小规模实验和可视化的桌面工作室
+3. **tools包**：用于大规模数据处理和分析的批处理作业脚本
 
-### 1. 数据流水线 (`tools/pipeline.py`)
+## 2.2 流水线架构
 
-这是项目的核心数据处理引擎，负责执行从“人口骨架”生成到“智能体画像”测试的全过程。它围绕一个“当前数据库”工作，该数据库记录了所有中间和最终数据。
+流水线包含两个主要阶段：
 
--   **主要步骤**:
-    1.  **初始化**: 创建并初始化一个新的数据库。
-    2.  **抽样**: 根据人口普查数据生成样本骨架。
-    3.  **丰富**: 调用 LLM API 将骨架丰富为画像。
-    4.  **测试**: 使用画像作为输入，完成人格问卷。
-    5.  **归档**: 完成流水线后，可将“当前数据库”备份为“历史数据库”，用于后续分析。
+### 2.2.1 阶段1：人物画像准备流水线
 
-### 2. 分析工具集 (`tools/personality/`)
+**数据来源：**
+- **人口普查数据采样**：主要方法，使用`data/census.csv`中的人口统计数据
+- **外部样本导入**：替代方法，使用外部数据库的预生成样本
 
-这是一组命令行工具，用于对“历史数据库”中的数据进行深入分析。
+**人物画像生成过程：**
+1. **骨架生成** (`tools/pipeline/create_persona_sample.py`)
+   - 从人口普查数据中采样人口统计属性
+   - 创建包含年龄、性别、职业、教育等基本信息的人物骨架
+   - 支持基于人口分布的加权随机采样
 
--   **主要功能**:
-    -   **因子分析**: 评估人格问卷的结构效度。
-    -   **内部一致性分析**: 检验问卷的信度。
-    -   **群体比较**: 比较不同模型或不同群体的人格特质差异。
-    -   **聚类与降维**: 使用 t-SNE、PCA 等方法对智能体人格进行可视化探索。
+2. **人物画像丰富** (`tools/pipeline/generate_persona.py`)
+   - 使用LLM丰富骨架数据的详细描述
+   - 结合多个人物画像方面（专业、体育、艺术、旅行、烹饪）
+   - 为人格测试生成全面的人物画像描述
 
-### 3. 可视化工作室 (`studio/`)
+3. **数据库集成**
+   - 将骨架存储在`samples`表中
+   - 将丰富后的人物画像存储在`persona`表中，包含组合描述
+   - 维护骨架和丰富人物画像之间的UUID映射
 
-这是一个基于 Streamlit 的 Web 应用，提供了友好的图形化界面，用于：
+### 2.2.2 阶段2：人格测试流水线
 
--   **实时监控**: 可视化“当前数据库”中的画像生成和测试进度。
--   **数据探索**: 浏览、筛选和搜索已生成的智能体画像。
--   **交互式分析**: 运行与分析工具集类似的数据分析，并以图表形式展示结果。
+**流水线概述：**
+人格测试流水线在单个数据库文件上运行，产生完整的实验数据集。每次流水线执行代表一个设计的实验，该实验：
+- 通过配置的测试方法处理人物画像
+- 生成全面的响应数据
+- 产生分析后的人格配置文件
+- 完成后，实验数据库通常手动复制到`data/db/backup/`目录进行后续统计分析
+- 备份数据库按实验类型和配置在备份目录中有序组织
 
-## 核心概念
+**抽象测试过程：**
+无论使用何种方法，流水线都遵循一致的工作流程：
+1. **初始化**：设置答案跟踪结构（通常数据库结构已预配置）
+2. **执行**：向人物画像管理人格问卷
+3. **提取**：处理响应以提取人格特质分数
+4. **存储**：将计算的人格配置文件保存到数据库
 
--   **人口骨架 (Skeleton)**: 仅包含人口统计学变量（如年龄、性别、教育、职业等）的基础样本。这是画像生成的起点。
--   **智能体画像 (Persona)**: 由 LLM 根据“骨架”信息扩展而来的丰富人物描述，包含详细的个人背景、生活故事、日常活动和性格特点。它是进行人格测试的直接输入。
+**配置控制方法：**
+系统支持两种IPIP-NEO-120问卷管理测试方法：
 
-## 使用指南
+**方法1：基于问题的测试** (`request_method = "question"`)
+- **方法**：单独问题回答，使用单独的LLM调用（每人120次API调用）
+- **数据结构**：`question_answer`表，模式为`(persona_id, question_id, response)`
+- **处理**：通过`qa_service.py`顺序处理问题
+- **提示**：使用`question_prompt`模板
 
-### 1. 安装依赖
+**方法2：测验/表格测试** (`request_method = "sheet"`)
+- **方法**：IPIP-NEO-120问卷分为6个表格，每个20个问题（每人6次API调用）
+- **目的**：与120次单独调用相比显著减少LLM资源消耗
+- **效率**：将API调用从每人120次减少到6次（减少20倍）
+- **数据结构**：`quiz_answer`表，包含JSON响应，包含每个20问题表格的答案
+- **处理**：通过`quiz_service.py`批量表格处理
+- **提示**：使用`sheet_prompt`模板，具有结构化JSON输出格式
 
-本项目使用 [Poetry](https://python-poetry.org/) 进行依赖管理。请先确保已安装 Poetry。
+**主要动机：**
+测验/表格方法专门为高效的大规模IPIP-NEO-120数据收集设计，显著降低LLM API成本和处理时间，同时保持数据质量。
+
+**统一提取：**
+两种方法汇聚到共同的提取过程：
+- **提取模块**：`answer_extractor.py`
+- **统一接口**：`get_answers(persona_id)`函数自动检测方法
+- **数据规范化**：将两种格式转换为标准化人格特质分数
+
+**配置详情：**
+- **控制键**：`config.json`中的`request_method`
+- **有效值**：`"question"`或`"sheet"`
+- **自动提示选择**：基于方法和`question_prompt`配置值
+
+**关键实现脚本：**
+- `pipeline.py`：基于`request_method`条件分支的主协调器
+- `qa_service.py`：基于问题的答案收集和处理
+- `quiz_service.py`：基于表格的问卷任务管理
+- `answer_extractor.py`：两种方法的统一答案处理
+
+## 2.3 数据结构
+
+数据存储在SQLite数据库(`data/db/agent-society.db`)中，包含：
+- `persona`：具有人口统计属性的丰富人物画像描述
+- `samples`：LLM丰富前的原始骨架数据
+- `question_answer`：单独问题响应
+- `quiz_answer`：完整问卷响应
+- `personality`：提取的人格特质分数
+
+## 2.4 工作流程
+
+完整的研究工作流程：
+1. **人物画像骨架生成**：从人口普查数据中人口统计采样
+2. **人物画像丰富**：基于LLM的描述生成
+3. **人格测试**：IPIP-NEO问卷管理
+4. **数据备份**：实验数据库复制到`data/db/backup/`进行保存
+5. **统计分析**：使用备份数据进行特质提取和验证
+
+## 2.5 安装
 
 ```bash
-# 克隆项目
-git clone https://github.com/your-username/agentic-society.git
-cd agentic-society
-
-# 使用 Poetry 安装依赖
 poetry install
 ```
 
-### 2. 配置环境
+## 2.6 说明
 
-在运行前，需要配置 LLM 的 API Key。请在项目根目录下创建 `.env` 文件，并填入以下内容：
+- 人口普查数据位于data/census.csv
+- IPIP-NEO数据位于data/IPIP-NEO
+- 提示词位于prompts目录
+- asociety是引擎部分，tools包含UI和工具脚本，包括问题集导入。问题集JSONL文件位于data/test，使用工具导入到SQLite
 
-```env
-# 示例：使用 DeepSeek API
-DEEPSEEK_API_KEY="your_deepseek_api_key"
+# 3. 实验设计
 
-# 示例：使用 OpenAI API
-OPENAI_API_KEY="your_openai_api_key"
-```
+## 3.1 个体水平实验
 
-### 3. 运行数据流水线
+### 3.1.1 虚拟人物人格稳定性（收敛性）实验
 
-数据流水线通过 `tools/pipeline.py` 脚本启动。这是一个命令行工具，你可以通过 `--help` 查看所有可用选项。
+**研究目标：**
+测试和验证LLM角色扮演虚拟人物是否具有稳定和收敛的人格特质。
+
+**实验方法：**
+1. **基本方法**：对单个角色配置文件进行300次连续人格测试，验证虚拟人物在LLM角色扮演中是否表现出稳定和收敛的人格特质
+2. **细节水平比较**：对不同细节水平的人物画像进行相同的人格测试，观察人格紧致性和稳定性的差异
+
+### 3.1.2 LLM人物画像可识别性测试
+
+**研究目标：**
+测试LLM生成的人物画像人格配置文件的可识别性和独特性。
+
+**实验方法：**
+1. **基本方法**：对两个不同的人物画像各进行300次人格测试，混合结果后进行聚类分析，评估人物画像人格的可识别性
+2. **细节水平影响**：对不同细节水平的人物画像进行相同实验，观察细节水平对可识别性的影响
+
+**实验结果位置：**
+- 个体水平实验结果存储在`data/db/backup/poor300`和`data/db/backup/samples300`目录
+
+## 3.2 群体水平实验
+
+**研究目标：**
+文献表明五大性格特质在年龄维度具有不变性。本实验比较LLM生成的人物画像人格测试在年龄维度的统计与真实人类的统计，观察LLM人物画像在性格方面、在群体水平模拟人类群体的能力。
+
+**实验设计：**
+- 比较LLM生成人物和真实人类在不同年龄组的人格特质统计分布
+- 分析LLM人物是否保持与人类心理学研究中观察到的人格特质不变性模式
+- 评估LLM群体水平人格模拟与真实人类人口数据的保真度
+
+### 3.2.1 LLM生成画像人格一致性测试
+
+**研究目标：**
+对通过人口数据插值并用LLM丰富细节所得的600个人物画像进行性格测试，然后对其结果进行年龄轴统计，与真实人类统计进行比较。
+
+**实验设计：**
+- 通过人口数据插值和LLM基础细节丰富生成600个人物画像
+- 对所有生成画像进行全面人格测试
+- 对人格测试结果进行年龄维度统计分析
+- 将年龄轴统计模式与真实人类人口统计进行比较
+- 评估LLM生成群体人格分布与真实人类人口模式的一致性和保真度
+
+### 3.2.2 使用提示词工程减轻LLM人物画像人格测试偏差
+
+**研究目标：**
+解决实验3.2.1中发现的LLM人物画像人格测试统计相对于人类数据的显著偏差，这种偏差由于对齐训练中使得LLM偏向正面表达的结果。使用提示词工程鼓励更真实和现实的响应。
+
+**实验设计：**
+- 利用反对齐提示词模板(`question_prompt_antialign`和`sheet_prompt_antialign`)，明确指示模型提供诚实、自然的响应
+- 包含诸如"不要试图显得完美、过于积极或理想化。只需选择真正感觉最像你的选项，即使是中性或负面的"等指令
+- 比较使用标准提示词与反对齐提示词的人格测试结果，测量偏差减少程度
+- 评估提示词工程在产生更现实人格配置文件方面的有效性，这些配置文件更好地匹配人类统计模式
+
+**提示词配置：**
+- `prompts/experiment.json`中可用的反对齐提示词模板：
+  - `question_prompt_antialign`：用于基于问题的测试方法
+  - `sheet_prompt_antialign`：用于基于表格的测试方法
+- 配置键：`config.json`中的`question_prompt`可设置为使用反对齐变体
+
+### 3.2.3 现实主义人物生成的小说写作方法
+
+**研究目标：**
+让LLM在生成人物画像时写小说，设计动机是：强烈提示其尊重现实生活的酸甜苦辣，悲欢离合，而能更大程度上接近真实人类。
+
+**实验设计：**
+- 使用基于叙事的提示词模板，将人物生成框架为小说写作
+- 使用`from_skeleton_narrative`提示，将LLM定位为创作原创故事的成就小说家
+- 使用`sheet_prompt_narrative`进行人格测试，将人物视为具有生活经历的小说主角
+- 方法强调："这不是简单的人物素描——将配置文件视为有生活、有叙述的人物，具有记忆、目标、恐惧、关系、声音和一致的内在生活"
+- 比较通过小说写作方法生成的人物与标准生成方法的现实主义和深度
+
+**提示词配置：**
+- **人物生成**：`prompts/generation.json`中的`from_skeleton_narrative`
+- **人格测试**：`prompts/experiment.json`中的`sheet_prompt_narrative`
+- **配置**：在`config.json`中将`persona_prompt`设置为`from_skeleton_narrative`，将`question_prompt`设置为`sheet_prompt_narrative`
+
+**关键特性：**
+- 需要具有开头、发展、高潮和结局的连贯情节
+- 包含人物适当的特质、观点和心理状态
+- 包括生动的环境描述和引人入胜的对话
+- 最少2000字以确保深度和复杂性
+- 产生具有现实生活经历和情感深度的人物
+
+### 3.2.4 Wikidata文学作品人物人格测试
+
+**研究目标：**
+继实验3.2.3中观察到显著改进（大幅接近人类曲线）后，我们尝试使用人类创作者作品中的人物形象作为人物画像驱动LLM任务扮演进行性格测试，验证LLM虚拟人物性格测试随着人物画像细节度、真实度的增强是否进一步逼近人类曲线。
+
+**实验设计：**
+- 从Wikidata提取文学作品人物的人物画像
+- 使用专门为Wikidata虚构人物设计的`sheet_prompt_wikifiction`提示词模板
+- 对这些人类创作的文学人物进行人格测试
+- 将结果人格分布与以下进行比较：
+  1. 标准LLM生成人物（基线）
+  2. 小说写作方法人物（3.2.3）
+  3. 真实人类人口统计
+- 分析随着人物画像真实性增加，曲线逼近的进展
+
+**提示词配置：**
+- **测试提示**：`prompts/experiment.json`中的`sheet_prompt_wikifiction`
+- **人物来源**：Wikidata提取的虚构人物画像
+- **关键特性**：
+  - 专门为Wikidata来源的虚构人物设计
+  - 强调在描述设置边界内的上下文推断
+  - 保持与原始文学背景的人物一致性
+  - 为人格测试选择提供角色内理由
+
+**预期结果：**
+验证LLM虚拟人物人格测试随着人物画像细节水平和真实性的增加，表现出逐步逼近人类统计曲线的进展，人类创作的文学人物代表最高水平的人物画像真实性。
+
+## 3.3 实验数据备份结构
+
+实验结果根据实验设计在`data/db/backup/`目录中有系统地组织：
+
+### 3.3.1 个体水平实验数据（第3.1节）
+
+**poor300/目录 - 虚拟人物人格稳定性测试（实验3.1.1）：**
+- `deepseek-chat-single-poor-1-300.db`：对第一个低细节人物配置文件的300次连续人格测试
+- `deepseek-chat-single-poor-2-300.db`：对第二个低细节人物配置文件的300次连续人格测试
+
+**samples300/目录 - 人物可识别性测试（实验3.1.2）：**
+- `deepseek-chat-single-1-300.db`：对第一个人物配置文件的300次测试，用于可识别性分析
+- `deepseek-chat-single-2-300.db`：对第二个人物配置文件的300次测试，用于可识别性分析
+
+### 3.3.2 群体水平实验数据（第3.2节）
+
+**主要数据库文件：**
+- `deepseek-chat-narrative.db`：小说写作方法结果（实验3.2.3）
+- `deepseek-chat-antialign.db`：反对齐提示词结果（实验3.2.2）
+- `human.db`：用于比较基线的真实人类统计（实验3.2.1、3.2.4）
+- `deepseek-chat.db`：标准LLM生成人物基线
+
+**附加实验目录：**
+- `samples-narrative300/`：用于详细分析的叙事方法人物结果
+- `nvidia300/`：附加实验变体
+- `wiki/`：Wikidata文学人物实验数据（实验3.2.4）
+
+### 3.3.3 数据库命名约定
+实验数据库遵循模式：`{llm_model}-{experiment_type}-{configuration}.db`
+- **llm_model**：deepseek-chat、glm-4-9b-chat等
+- **experiment_type**：single、narrative、antialign、quiz等
+- **configuration**：附加实验特定参数
+
+### 3.3.4 数据保存工作流程
+1. **实验执行**：流水线处理人物画像并在工作数据库中生成结果
+2. **数据备份**：完成的实验数据库手动复制到`data/db/backup/`
+3. **组织**：数据库按实验类型和配置组织
+4. **分析**：备份数据库加载到Agentic-Society-Studio进行统计分析
+
+# 4. Agentic-Society-Studio使用
+
+## 4.1 概述
+
+Agentic-Society-Studio是专门为已完成实验的人格测试结果可视化和统计分析设计的桌面应用程序。它提供了专门针对第3节描述的实验设计量身定制的分析工具。
+
+## 4.2 分析工具类别
+
+工作室提供两类主要分析工具：
+
+1. **通用数据分析工具**：适用于任何数据源的通用统计工具
+2. **专业化实验分析**：专门为第3节实验设计预配置的分析面板
+
+工作室设计用于分析备份目录中存储的实验结果：
+
+### 4.2.1 个体水平实验分析（3.1）
+- **poor300/**：包含虚拟人物人格稳定性测试结果
+  - `deepseek-chat-single-poor-1-300.db`：单个低细节人物的300次测试
+  - `deepseek-chat-single-poor-2-300.db`：第二个低细节人物的300次测试
+- **samples300/**：包含可识别性测试结果  
+  - `deepseek-chat-single-1-300.db`：第一个人物配置文件的300次测试
+  - `deepseek-chat-single-2-300.db`：第二个人物配置文件的300次测试
+
+**工作室分析工具：**
+- **稳定性分析面板**：分析300次重复测试的收敛性和稳定性
+- **可识别性面板**：聚类分析以测量人物独特性
+- **t-SNE可视化**：降维以可视化人物分离
+
+### 4.2.2 群体水平实验分析（3.2）
+- `deepseek-chat-narrative.db`：小说写作方法结果（3.2.3）
+- `deepseek-chat-antialign.db`：反对齐提示词结果（3.2.2）  
+- `human.db`：用于比较的真实人类统计（3.2.1、3.2.4）
+- `samples-narrative300/`：叙事方法人物结果
+
+**工作室分析工具：**
+- **曲线比较面板**：比较不同实验的人格曲线
+- **因素分析面板**：验证人格因素结构一致性
+- **CFA面板**：模型验证的验证性因素分析
+
+## 4.3 启动工作室
 
 ```bash
-# 激活 Poetry 虚拟环境
-poetry shell
-
-# 查看流水线帮助信息
-python -m tools.pipeline --help
+# 从项目根目录启动工作室应用程序
+poetry run python -m studio.agent-society-studio
 ```
 
-**示例：完整运行一次流水线**
+## 4.4 工具类别详情
 
+### 4.4.1 通用数据分析工具
+这些是"数据分析"菜单下可用的通用统计工具：
+- **人格分析**：基本人格特质探索
+- **马氏距离**：异常值检测和距离分析
+- **聚类分析**：人格配置文件的无监督聚类
+- **t-SNE可视化**：模式可视化的降维
+- **配置文件比较**：多模式配置文件比较
+- **内部一致性**：人格测量的可靠性分析
+- **因素分析（EFA）**：探索性因素分析
+- **验证性因素分析（CFA）**：模型验证分析
+
+这些工具允许研究人员选择任何数据源并执行自定义分析。
+
+### 4.4.2 专业化实验分析
+这些是"专题分析"菜单下的预配置分析面板，专门为实验设计：
+- **稳定性分析**：用于实验3.1.1 - 虚拟人物人格稳定性
+- **可识别性分析**：用于实验3.1.2 - 人物配置文件独特性
+- **曲线比较**：用于实验3.2.1-3.2.4 - 年龄维度曲线分析
+
+这些面板针对特定实验数据结构和研究问题进行了优化。
+
+## 4.5 实验结果分析工作流程
+
+1. **加载实验数据库**：根据实验类型从`data/db/backup/`选择
+2. **选择分析面板**：选择适当的分析工具：
+   - 对于稳定性测试：使用稳定性分析面板
+   - 对于可识别性：使用可识别性和聚类面板  
+   - 对于群体比较：使用曲线比较和CFA面板
+3. **配置分析参数**：为每种实验类型设置特定参数
+4. **执行和比较**：运行分析并比较不同实验条件的结果
+5. **导出发现**：保存统计结果和可视化以供研究报告
+
+## 4.6 关键分析能力
+
+### 4.6.1 个体水平实验（3.1）
+- **收敛分析**：测量300次测试中人格特质的稳定性
+- **聚类分离**：量化人物配置文件之间的独特性
+- **内部一致性**：评估人格测量的可靠性
+
+### 4.6.2 群体水平实验（3.2）  
+- **曲线逼近**：测量LLM曲线与人类统计的接近程度
+- **偏差减少**：量化反对齐提示词的有效性
+- **现实主义评估**：评估小说写作方法的改进
+- **真实性梯度**：分析从标准→小说→人类创建人物的进展
+
+## 4.7 支持的实验数据
+
+- `data/db/backup/`中已完成实验的所有SQLite数据库
+- 用于交叉验证的多个实验比较
+- 与两种测试方法（基于问题和基于表格）的集成
+- 支持不同的LLM配置和提示词变体
+
+# 5. 工具使用指南
+
+本节提供项目中各种命令行工具的示例和使用说明。
+
+## 5.1 流水线工具
+
+### 5.1.1 copy_random_samples.py
+在数据库之间复制随机样本以进行实验设置。
+
+**示例命令：**
 ```bash
-# 1. 初始化数据库（创建一个名为 my_experiment.db 的新数据库）
-python -m tools.pipeline init --db-name my_experiment.db
+# 从源数据库复制100个随机样本到目标数据库
+poetry run python tools/pipeline/copy_random_samples.py --source_db data/db/source.db --dest_db data/db/experiment.db -n 100
 
-# 2. 创建 100 个智能体骨架
-python -m tools.pipeline sample --db-name my_experiment.db -n 100
-
-# 3. 将骨架丰富为画像（使用 deepseek-chat 模型）
-python -m tools.pipeline enrich --db-name my_experiment.db --model deepseek-chat
-
-# 4. 对所有未测试的画像进行人格测试
-python -m tools.pipeline elicit --db-name my_experiment.db --model deepseek-chat
+# 验证数据库是否恰好包含100个样本
+poetry run python tools/pipeline/copy_random_samples.py --verify --db_path data/db/experiment.db -n 100
 ```
 
-### 4. 启动可视化工作室
+### 5.1.2 create_persona_sample.py
+从人口普查数据创建人物样本用于实验群体。
 
-可视化工作室是一个 Streamlit 应用，可以通过以下命令启动：
-
+**示例命令：**
 ```bash
-# 确保已在 Poetry 虚拟环境中
-poetry shell
-
-# 启动 Studio
-streamlit run studio/agent-society-studio.py
+# 为群体实验创建600个人物样本
+poetry run python tools/pipeline/create_persona_sample.py -n 600
 ```
 
-启动后，浏览器将自动打开一个页面，你可以在其中选择要加载的数据库（包括“当前”和“历史”数据库），并进行交互式探索和分析。
+### 5.1.3 generate_persona.py
+使用LLM生成丰富的人物描述。
 
-## `tools` 目录工具介绍
+**示例命令：**
+```bash
+# 从样本骨架生成丰富的人物画像
+poetry run python tools/pipeline/generate_persona.py
+```
 
--   `initialize_database.py`: 初始化一个新的 SQLite 数据库结构。
--   `create_persona_sample.py`: 从人口普查数据创建指定数量的“骨架”。
--   `generate_persona.py`: 调用 LLM 将“骨架”丰富为“画像”。
--   `load_ipip_set.py`: 将 IPIP-NEO 问卷题目加载到数据库中。
--   `pipeline.py`: 串联多个步骤的自动化数据流水线工具。
--   `inspect_db.py`: 一个简单的命令行工具，用于快速查看数据库内容。
--   `personality/`: 包含所有核心数据分析脚本的目录。
-    -   `analyze_factor_structure.py`: 运行因子分析。
-    -   `analyze_internal_consistency.py`: 计算克朗巴赫系数 (Cronbach's Alpha)。
-    -   `compare_personalities.py`: 比较两组样本的人格均值。
-    -   `personality_tsne.py`: 运行 t-SNE 降维并可视化。
+### 5.1.4 pipeline.py
+人格测试实验的主流水线协调器。
+
+**示例命令：**
+```bash
+# 运行完整的人格测试流水线
+poetry run python tools/pipeline/pipeline.py
+```
+
+## 5.2 导入工具
+
+### 5.2.1 import_ipip_set.py
+将IPIP-NEO-120问题集导入数据库。
+
+**示例命令：**
+```bash
+# 导入IPIP-NEO-120问卷
+poetry run python tools/importers/import_ipip_set.py
+```
+
+### 5.2.2 import_human_data.py
+导入人类人格数据用于比较研究。
+
+**示例命令：**
+```bash
+# 导入人类参考数据
+poetry run python tools/importers/import_human_data.py
+```
+
+### 5.2.3 import_wikidata_bios.py
+从Wikidata导入人物传记用于文学人物实验。
+
+**示例命令：**
+```bash
+# 导入Wikidata人物传记
+poetry run python tools/importers/import_wikidata_bios.py
+```
+
+## 5.3 导出工具
+
+### 5.3.1 export_personality_answers.py
+导出人格答案数据用于外部分析。
+
+**示例命令：**
+```bash
+# 将人格答案导出到CSV
+poetry run python tools/exporters/export_personality_answers.py --output personality_data.csv
+```
+
+## 5.4 使用模式
+
+### 实验设置工作流程：
+```bash
+# 1. 导入问卷数据
+poetry run python tools/importers/import_ipip_set.py
+
+# 2. 创建人物样本
+poetry run python tools/pipeline/create_persona_sample.py -n 600
+
+# 3. 生成丰富的人物画像
+poetry run python tools/pipeline/generate_persona.py
+
+# 4. 运行人格测试
+poetry run python tools/pipeline/pipeline.py
+```
+
+### 数据管理工作流程：
+```bash
+# 为重点实验复制特定样本
+poetry run python tools/pipeline/copy_random_samples.py --source_db data/db/backup/population.db --dest_db data/db/target_experiment.db -n 50
+
+# 为外部分析导出结果
+poetry run python tools/exporters/export_personality_answers.py --output experiment_results.csv
+```
+
+# 6. 贡献者
+1. yuqi.bai
