@@ -3,7 +3,9 @@
     "allow": [
       "Bash(python:*)",
       "Bash(poetry install:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
