@@ -130,6 +130,13 @@ Test and validate whether LLM role-playing virtual characters possess stable and
 1. **Basic Method**: Conduct 300 consecutive personality tests on a single character profile to verify if virtual characters exhibit stable and convergent personality traits in LLM role-playing
 2. **Detail Level Comparison**: Perform the same personality testing on character profiles with different levels of detail to observe differences in personality compactness and stability
 
+**Convergence Analysis Results:**
+![Mahalanobis Distance Analysis 1](img/matabolis-distance-normal-300-1.jpg)
+*Figure: Mahalanobis distance analysis showing personality trait convergence over 300 tests - Part 1*
+
+![Mahalanobis Distance Analysis 2](img/matabolis-distance-normal-300-2.jpg)
+*Figure: Mahalanobis distance analysis showing personality trait convergence over 300 tests - Part 2*
+
 ### 3.1.2 LLM Character Profile Identifiability Test
 
 **Research Objective:**
@@ -141,6 +148,13 @@ Test the identifiability and distinctiveness of LLM-generated character personal
 
 **Experimental Results Location:**
 - Individual-level experiment results are stored in `data/db/backup/poor300` and `data/db/backup/samples300` directories
+
+**Example Results:**
+![Cluster Analysis - Poor Detail](img/cluster-poor-300.jpg)
+*Figure: Clustering analysis of poor-detail character profiles showing distinct personality clusters*
+
+![Cluster Analysis - Normal Detail](img/cluster-normal-300.jpg)  
+*Figure: Clustering analysis of normal-detail character profiles demonstrating improved identifiability*
 
 ## 3.2 Population-Level Experiments
 
@@ -164,6 +178,10 @@ Conduct personality testing on 600 character profiles obtained by interpolating 
 - Compare the age-axis statistical patterns with real human population statistics
 - Evaluate the consistency and fidelity of LLM-generated population personality distributions compared to real human demographic patterns
 
+**Results:**
+![Normal Generation vs Human](img/comparasion-normal.jpg)
+*Figure: Comparison of normal LLM generation (blue) with human baseline (purple) showing initial personality curve patterns*
+
 ### 3.2.2 Mitigating LLM Persona Personality Test Bias with Prompt Engineering
 
 **Research Objective:**
@@ -180,6 +198,10 @@ Address the significant bias discovered in Experiment 3.2.1 where LLM character 
   - `question_prompt_antialign`: For question-based testing method
   - `sheet_prompt_antialign`: For sheet-based testing method
 - Configuration key: `question_prompt` in `config.json` can be set to use anti-alignment variants
+
+**Results:**
+![Anti-alignment vs Human](img/comparasion-anlialign.jpg)
+*Figure: Anti-alignment approach (red) comparison with human baseline demonstrating bias reduction*
 
 ### 3.2.3 Novel Writing Approach for Realistic Character Generation
 
@@ -204,6 +226,16 @@ Have LLM write novels when generating character profiles, with the design motiva
 - Includes vivid environmental descriptions and engaging dialogues
 - Minimum 2,000 words to ensure depth and complexity
 - Produces characters with realistic life experiences and emotional depth
+
+**Results:**
+![Narrative Approach vs Human](img/comparasion-narrative.jpg)  
+*Figure: Narrative approach (green) showing improved approximation to human personality curves*
+
+**Identifiability Reinforcement Analysis:**
+![Cluster Analysis - Narrative Approach](img/cluster-narrative300.jpg)
+*Figure: Clustering analysis of narrative approach characters showing enhanced personality distinctiveness*
+
+*Note: This clustering analysis was conducted as a supplementary validation after completing the narrative method experiment to further verify identifiability. The results show that characters generated using the narrative method exhibit stronger identifiability and distinctiveness, providing additional support for the effectiveness of this approach.*
 
 ### 3.2.4 Wikidata Literary Character Personality Testing
 
@@ -231,6 +263,13 @@ Following the significant improvement observed in Experiment 3.2.3 (substantiall
 
 **Expected Outcome:**
 Validation that LLM virtual character personality testing demonstrates progressive approximation to human statistical curves as character profile detail level and authenticity increase, with human-created literary characters representing the highest level of profile authenticity.
+
+**Results:**
+![Wiki Fiction vs Human](img/comparasion-wiki.jpg)
+*Figure: Wikidata literary characters (orange) comparison with human baseline showing highest level of authenticity*
+
+**Comprehensive Curve Comparison Results:**
+*Note: Individual experiment results are shown in their respective experimental sections above.*
 
 ## 3.3 Experimental Data Backup Structure
 
