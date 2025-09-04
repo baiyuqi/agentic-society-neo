@@ -33,7 +33,7 @@ LANGUAGES = {
         'plot_title': '性格维度随年龄变化',
         'age': '年龄',
         'score': '得分',
-        'distance_table_title': '与人类曲线的平均距离 (20-70岁)',
+        'distance_table_title': 'Average Distance from Human Curve (at ages 20-70)',
     },
     'en': {
         'file': 'File',

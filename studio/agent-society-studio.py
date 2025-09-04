@@ -14,6 +14,9 @@ from studio.internal_consistency_panel import InternalConsistencyPanel # Import 
 from studio.factor_analysis_panel import FactorAnalysisPanel # Import the factor analysis panel
 from studio.identifiability_panel import IdentifiabilityPanel # Import the new identifiability panel
 from studio.curve_comparison_panel import CurveComparisonPanel # Import the new curve comparison panel
+from studio.raw_comparison_panel import RawComparisonPanel # Import the new raw comparison panel
+from studio.antialign_comparison_panel import AntialignComparisonPanel # Import the new antialign comparison panel
+from studio.narrative_comparison_panel import NarrativeComparisonPanel # Import the new narrative comparison panel
 from studio.stability_analysis_panel import StabilityAnalysisPanel # Import the new stability panel
 from studio.cfa_panel import CFAPanel # Import the new CFA panel
 from studio.personality_browse import PersonalityBrowser
@@ -146,6 +149,9 @@ class MainWindow:
             'cfa': CFAPanel(self.right),
             'identifiability': IdentifiabilityPanel(self.right),
             'curve_comparison': CurveComparisonPanel(self.right),
+            'raw_comparison': RawComparisonPanel(self.right),
+            'antialign_comparison': AntialignComparisonPanel(self.right),
+            'narrative_comparison': NarrativeComparisonPanel(self.right),
             'stability': StabilityAnalysisPanel(self.right)
         }
         
@@ -236,6 +242,9 @@ class MainWindow:
         tv.insert('special_analysis', 'end', 'stability', text=lang['stability_analysis'], image='')
         tv.insert('special_analysis', 'end', 'identifiability', text=lang['identifiability_analysis'], image='')
         tv.insert('special_analysis', 'end', 'curve_comparison', text='年龄维度曲线对比 (deepseek)', image='')
+        tv.insert('special_analysis', 'end', 'raw_comparison', text='正常生成画像曲线分析', image='')
+        tv.insert('special_analysis', 'end', 'antialign_comparison', text='抗对齐vs正常生成对比', image='')
+        tv.insert('special_analysis', 'end', 'narrative_comparison', text='叙事vs抗对齐vs正常生成对比', image='')
         
         tv.item('working_db', open=True)
         tv.item('data_analysis', open=True)
@@ -261,6 +270,9 @@ class MainWindow:
             'cfa': 'cfa',
             'identifiability': 'identifiability',
             'curve_comparison': 'curve_comparison',
+            'raw_comparison': 'raw_comparison',
+            'antialign_comparison': 'antialign_comparison',
+            'narrative_comparison': 'narrative_comparison',
             'stability': 'stability'
         }
         

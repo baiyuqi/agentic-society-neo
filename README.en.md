@@ -338,7 +338,10 @@ These tools allow researchers to select any data source and perform custom analy
 These are pre-configured analysis panels under the "Special Analysis" menu, specifically designed for the experimental designs:
 - **Stability Analysis**: For Experiment 3.1.1 - Virtual character personality stability
 - **Identifiability Analysis**: For Experiment 3.1.2 - Character profile distinctiveness
-- **Curve Comparison**: For Experiments 3.2.1-3.2.4 - Age dimension curve analysis
+- **Curve Comparison**: For Experiments 3.2.1-3.2.4 - Comprehensive age dimension curve analysis
+- **Normal Generation Analysis**: For analyzing standard deepseek-chat persona generation curves
+- **Antialign Comparison**: For comparing anti-alignment vs normal generation curves
+- **Narrative Comparison**: For comprehensive comparison of narrative vs antialign vs normal generation
 
 These panels are optimized for the specific experimental data structures and research questions.
 
@@ -371,6 +374,37 @@ These panels are optimized for the specific experimental data structures and res
 - Multiple experiment comparison for cross-validation
 - Integration with both testing methods (question-based and sheet-based)
 - Support for different LLM configurations and prompt variants
+
+## 4.8 Specialized Curve Comparison Panels
+The studio includes several specialized curve comparison panels for analyzing personality trait curves across different age dimensions:
+
+### 4.8.1 Comprehensive Curve Comparison Panel
+- **Purpose**: Compare personality trait curves between LLM-generated personas and human baseline data across all deepseek variants
+- **Data Sources**: Human baseline + deepseek-chat + deepseek-chat-antialign + deepseek-chat-narrative + wiki-fiction
+- **Features**: Visual curves for each personality trait, distance metrics, statistical analysis
+- **Analysis**: Euclidean distance calculations at specific age points (20, 30, 40, 50, 60, 70)
+
+### 4.8.2 Normal Generation Analysis Panel
+- **Purpose**: Analyze standard deepseek-chat persona generation curves in isolation
+- **Data Sources**: Only deepseek-chat (blue line, linewidth=2.0)
+- **Use Case**: Focused analysis of normal persona generation patterns without comparison distractions
+
+### 4.8.3 Antialign Comparison Panel
+- **Purpose**: Compare anti-alignment vs normal generation curves
+- **Data Sources**: deepseek-chat (blue) vs deepseek-chat-antialign (red)
+- **Use Case**: Analyze the effectiveness of anti-alignment prompts in reducing LLM bias
+
+### 4.8.4 Narrative Comparison Panel
+- **Purpose**: Comprehensive comparison of all three deepseek variants
+- **Data Sources**: deepseek-chat (blue) + deepseek-chat-antialign (red) + deepseek-chat-narrative (green)
+- **Use Case**: Full spectrum analysis of different generation strategies and their impact on personality curves
+
+### 4.8.5 Key Analysis Metrics
+All curve comparison panels provide:
+- **Visual Comparison**: Plots of Neuroticism, Extraversion, Openness, Agreeableness, Conscientiousness across age groups
+- **Distance Table**: Average trait differences and overall Euclidean distance from human baseline
+- **Statistical Analysis**: Computes average trait differences at specific age points
+- **Style Customization**: Different line styles and colors for easy visual distinction
 
 # 5. Tool Usage Guide
 
