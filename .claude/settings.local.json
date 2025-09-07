@@ -6,7 +6,21 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\doc/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\doc/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\asociety/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\tools/**)",
+      "Bash(sqlite3:*)",
+      "Bash(poetry shell)"
     ],
     "deny": [],
     "ask": []

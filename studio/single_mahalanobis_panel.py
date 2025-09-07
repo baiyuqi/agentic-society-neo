@@ -149,6 +149,17 @@ class SingleMahalanobisPanel:
         if self.data_tree:
             self.data_tree.destroy()
 
+        # Remove outliers using IQR method before calculating statistics
+        distances_no_outliers = self._remove_outliers_iqr(self.distances)
+        
+        # Calculate statistical metrics on cleaned data
+        cv, kurtosis = self._calculate_statistical_metrics(distances_no_outliers)
+        
+        # Create table with statistical metrics in title
+        table_title = f"Distance Distribution (CV: {cv:.3f}, Kurtosis: {kurtosis:.3f})"
+        title_label = ttk.Label(self.data_frame, text=table_title, font=("Helvetica", 10, "bold"))
+        title_label.pack(pady=(0, 5))
+
         cols = ['Distance Range', 'Count', 'Probability Density']
         self.data_tree = ttk.Treeview(self.data_frame, columns=cols, show='headings')
 
@@ -174,6 +185,40 @@ class SingleMahalanobisPanel:
         self.data_tree.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side='right', fill='y')
         self.data_tree.pack(fill=tk.BOTH, expand=True)
+
+    def _remove_outliers_iqr(self, data):
+        """Remove outliers using Interquartile Range method."""
+        if len(data) < 4:  # Need at least 4 points for IQR
+            return data
+            
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+        
+        # Filter out outliers
+        filtered_data = data[(data >= lower_bound) & (data <= upper_bound)]
+        return filtered_data
+
+    def _calculate_statistical_metrics(self, data):
+        """Calculate variation coefficient and kurtosis."""
+        if len(data) < 2:
+            return 0.0, 0.0
+            
+        mean = np.mean(data)
+        std = np.std(data)
+        
+        # Variation coefficient (avoid division by zero)
+        cv = std / mean if mean != 0 else 0.0
+        
+        # Kurtosis (using Fisher's definition, normal distribution = 0)
+        if len(data) >= 4 and std > 0:
+            kurtosis = np.mean(((data - mean) / std) ** 4) - 3
+        else:
+            kurtosis = 0.0
+            
+        return cv, kurtosis
 
     def copy_table_data_to_clipboard(self):
         """Copies the data from the histogram table to the clipboard in JSON format."""

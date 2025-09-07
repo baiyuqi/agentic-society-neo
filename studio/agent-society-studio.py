@@ -19,6 +19,7 @@ from studio.antialign_comparison_panel import AntialignComparisonPanel # Import 
 from studio.narrative_comparison_panel import NarrativeComparisonPanel # Import the new narrative comparison panel
 from studio.stability_analysis_panel import StabilityAnalysisPanel # Import the new stability panel
 from studio.cfa_panel import CFAPanel # Import the new CFA panel
+from studio.multi_mahalanobis_panel import MultiMahalanobisPanel # Import the new multi Mahalanobis panel
 from studio.personality_browse import PersonalityBrowser
 from studio.personality_analysis import PersonalityAnalysis
 from studio.personality_stats import PersonalityStats
@@ -49,6 +50,7 @@ LANGUAGES = {
         'working_db': '工作数据库',
         'data_analysis': '数据分析',
         'mahalanobis_distance': '马氏距离分析 (单文件)',
+        'multi_mahalanobis_distance': '马氏距离对比 (多数据源)',
         'clustering_analysis': '聚类分析 (多文件)',
         'tsne_analysis': 't-SNE 可视化 (多文件)',
         'comparison_analysis': '画像对比分析 (多模式)',
@@ -88,6 +90,7 @@ LANGUAGES = {
         'working_db': 'Working Database',
         'data_analysis': 'Data Analysis',
         'mahalanobis_distance': 'Mahalanobis Dist (Single File)',
+        'multi_mahalanobis_distance': 'Mahalanobis Compare (Multi-Source)',
         'clustering_analysis': 'Clustering (Multi-File)',
         'tsne_analysis': 't-SNE Visualization (Multi-File)',
         'comparison_analysis': 'Profile Comparison (Multi-Mode)',
@@ -141,6 +144,7 @@ class MainWindow:
             'personality-analysis': PersonalityAnalysis(self.right),
             'personality-stats': PersonalityStats(self.right),
             'mahalanobis': SingleMahalanobisPanel(self.right),
+            'multi_mahalanobis': MultiMahalanobisPanel(self.right),
             'clustering': ClusteringPanel(self.right),
             'tsne': TSNEPanel(self.right),
             'comparison': ComparisonPanel(self.right),
@@ -231,6 +235,7 @@ class MainWindow:
         # Children for "Data Analysis"
         tv.insert('data_analysis', 'end', 'personality-analysis', text=lang['personality_analysis'], image='')
         tv.insert('data_analysis', 'end', 'mahalanobis', text=lang['mahalanobis_distance'], image='')
+        tv.insert('data_analysis', 'end', 'multi_mahalanobis', text=lang['multi_mahalanobis_distance'], image='')
         tv.insert('data_analysis', 'end', 'clustering', text=lang['clustering_analysis'], image='')
         tv.insert('data_analysis', 'end', 'tsne', text=lang['tsne_analysis'], image='')
         tv.insert('data_analysis', 'end', 'comparison', text=lang['comparison_analysis'], image='')
@@ -262,6 +267,7 @@ class MainWindow:
             'personality-analysis': 'personality-analysis',
             'personality-stats': 'personality-stats',
             'mahalanobis': 'mahalanobis',
+            'multi_mahalanobis': 'multi_mahalanobis',
             'clustering': 'clustering',
             'tsne': 'tsne',
             'comparison': 'comparison',
