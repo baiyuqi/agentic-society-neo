@@ -24,40 +24,58 @@ class MultiMahalanobisPanel:
         title_label = ttk.Label(control_frame, text="多数据源马氏距离对比分析", font=("Helvetica", 14, "bold"))
         title_label.pack(pady=10)
         
-        self.run_button = ttk.Button(control_frame, text="运行分析", command=self.start_analysis)
-        self.run_button.pack(pady=5)
+        # Create horizontal frame for buttons
+        button_frame = ttk.Frame(control_frame)
+        button_frame.pack(pady=5)
+        
+        self.run_button = ttk.Button(button_frame, text="运行分析", command=self.start_analysis)
+        self.run_button.pack(side=tk.LEFT, padx=5)
         
         # Toggle between histogram and curve view
         self.show_curves = True  # Default to curves
-        self.view_toggle = ttk.Button(control_frame, text="切换为直方图", command=self.toggle_view)
-        self.view_toggle.pack(pady=5)
+        self.view_toggle = ttk.Button(button_frame, text="切换为直方图", command=self.toggle_view)
+        self.view_toggle.pack(side=tk.LEFT, padx=5)
         
         # Toggle Narrative dataset display
         self.show_narrative = True  # Default to showing narrative
-        self.narrative_toggle = ttk.Button(control_frame, text="隐藏 Narrative", command=self.toggle_narrative)
-        self.narrative_toggle.pack(pady=5)
+        self.narrative_toggle = ttk.Button(button_frame, text="隐藏 Narrative", command=self.toggle_narrative)
+        self.narrative_toggle.pack(side=tk.LEFT, padx=5)
         
-        # Data sources
-        self.data_sources = [
+        # Persona selection dropdown
+        persona_frame = ttk.Frame(control_frame)
+        persona_frame.pack(pady=5)
+        
+        ttk.Label(persona_frame, text="选择Persona:").pack(side=tk.LEFT, padx=(0, 5))
+        self.persona_var = tk.StringVar(value="1")
+        self.persona_combo = ttk.Combobox(persona_frame, textvariable=self.persona_var, 
+                                        values=["1", "2"], width=5, state='readonly')
+        self.persona_combo.pack(side=tk.LEFT)
+        self.persona_combo.bind('<<ComboboxSelected>>', self.on_persona_change)
+        
+        # Data sources templates (will be updated with selected persona)
+        self.data_source_templates = [
             {
                 'name': 'poor300',
-                'path': 'data/db/backup/poor300/deepseek-chat-single-poor-1-300.db',
+                'template': 'data/db/backup/poor300/deepseek-chat-single-poor-{}-300.db',
                 'color': 'red',
                 'label': 'Poor Quality'
             },
             {
                 'name': 'samples300', 
-                'path': 'data/db/backup/samples300/deepseek-chat-single-1-300.db',
+                'template': 'data/db/backup/samples300/deepseek-chat-single-{}-300.db',
                 'color': 'blue',
                 'label': 'Standard Sample'
             },
             {
                 'name': 'narrative300',
-                'path': 'data/db/backup/samples-narrative300/deepseek-chat-single-1-300-narra.db',
+                'template': 'data/db/backup/samples-narrative300/deepseek-chat-single-{}-300-narra.db',
                 'color': 'green', 
                 'label': 'Narrative'
             }
         ]
+        
+        # Initialize data sources with current persona
+        self.data_sources = self._update_data_sources_paths("1")
         
         # Create paned window for plot and table
         self.results_paned_window = ttk.PanedWindow(main_content_frame, orient=tk.VERTICAL)
@@ -162,6 +180,10 @@ class MultiMahalanobisPanel:
 
     def display_results(self):
         try:
+            # Check if we have results to display
+            if not hasattr(self, 'results') or not self.results:
+                return
+            
             # Clear previous plot
             if self.canvas:
                 self.canvas.get_tk_widget().destroy()
@@ -204,6 +226,7 @@ class MultiMahalanobisPanel:
                         ax.fill_between(x, y, alpha=0.3, color=color)
                 
                 ax.set_title('Multiple Data Sources Mahalanobis Distance Distribution (KDE)')
+                ax.legend()  # Add legend for curve view
             else:
                 # Plot histograms for each dataset
                 legend_elements = []
@@ -267,14 +290,15 @@ class MultiMahalanobisPanel:
             self.data_tree.heading(col, text=col)
             self.data_tree.column(col, width=120, anchor='center')
         
-        # Add data
+        # Add data (respect narrative toggle)
         for source_name, result in self.results.items():
-            self.data_tree.insert('', 'end', values=(
-                result['label'],
-                f"{result['cv']:.4f}",
-                f"{result['kurtosis']:.4f}",
-                len(result['distances_clean'])
-            ))
+            if self.show_narrative or 'narrative' not in source_name.lower():
+                self.data_tree.insert('', 'end', values=(
+                    result['label'],
+                    f"{result['cv']:.4f}",
+                    f"{result['kurtosis']:.4f}",
+                    len(result['distances_clean'])
+                ))
         
         # Add scrollbar
         scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.data_tree.yview)
@@ -337,6 +361,36 @@ class MultiMahalanobisPanel:
         # Redisplay results with new narrative setting
         if hasattr(self, 'results') and self.results:
             self.display_results()
+
+    def _update_data_sources_paths(self, persona_number):
+        """Update data source paths with the selected persona number"""
+        updated_sources = []
+        for template in self.data_source_templates:
+            updated_source = template.copy()
+            updated_source['path'] = template['template'].format(persona_number)
+            updated_sources.append(updated_source)
+        return updated_sources
+
+    def on_persona_change(self, event=None):
+        """Handle persona selection change"""
+        persona_number = self.persona_var.get()
+        self.data_sources = self._update_data_sources_paths(persona_number)
+        
+        # Clear any existing results
+        if hasattr(self, 'results'):
+            self.results = {}
+        
+        # Clear display
+        if hasattr(self, 'canvas') and self.canvas:
+            self.canvas.get_tk_widget().destroy()
+            self.canvas = None
+        if hasattr(self, 'data_tree') and self.data_tree:
+            self.data_tree.destroy()
+            self.data_tree = None
+        
+        print(f"Switched to persona {persona_number}")
+        for source in self.data_sources:
+            print(f"  {source['label']}: {source['path']}")
 
     def set_language(self, lang):
         pass

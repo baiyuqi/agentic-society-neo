@@ -235,7 +235,6 @@ class MainWindow:
         # Children for "Data Analysis"
         tv.insert('data_analysis', 'end', 'personality-analysis', text=lang['personality_analysis'], image='')
         tv.insert('data_analysis', 'end', 'mahalanobis', text=lang['mahalanobis_distance'], image='')
-        tv.insert('data_analysis', 'end', 'multi_mahalanobis', text=lang['multi_mahalanobis_distance'], image='')
         tv.insert('data_analysis', 'end', 'clustering', text=lang['clustering_analysis'], image='')
         tv.insert('data_analysis', 'end', 'tsne', text=lang['tsne_analysis'], image='')
         tv.insert('data_analysis', 'end', 'comparison', text=lang['comparison_analysis'], image='')
@@ -246,6 +245,7 @@ class MainWindow:
         # Children for "Special Analysis"
         tv.insert('special_analysis', 'end', 'stability', text=lang['stability_analysis'], image='')
         tv.insert('special_analysis', 'end', 'identifiability', text=lang['identifiability_analysis'], image='')
+        tv.insert('special_analysis', 'end', 'multi_mahalanobis', text=lang['multi_mahalanobis_distance'], image='')
         tv.insert('special_analysis', 'end', 'curve_comparison', text='年龄维度曲线对比 (deepseek)', image='')
         tv.insert('special_analysis', 'end', 'raw_comparison', text='正常生成画像曲线分析', image='')
         tv.insert('special_analysis', 'end', 'antialign_comparison', text='抗对齐vs正常生成对比', image='')
