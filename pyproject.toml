@@ -35,6 +35,8 @@ semopy = "^2.3.11"
 requests = "^2.32.4"
 wikipedia-api = "^0.8.1"
 
+[tool.poetry.scripts]
+std = "studio.astudio:main"
 
 [tool.poetry.group.dev.dependencies]
 vulture = "^2.14"
