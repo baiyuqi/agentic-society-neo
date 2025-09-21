@@ -1,6 +1,6 @@
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import os
 from asociety.personality.personality_analysis import get_personas_ana
 from studio.base_curve_panel import BaseCurvePanel
@@ -13,7 +13,11 @@ class CurveComparisonPanel(BaseCurvePanel):
     def create_control_frame(self, parent):
         control_frame = ttk.Frame(parent)
         self.run_button = ttk.Button(control_frame, text="Run Comparison Analysis", command=self.trigger_analysis)
-        self.run_button.pack()
+        self.run_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.save_button = ttk.Button(control_frame, text="Save to SVG", command=self.save_to_svg, state=tk.DISABLED)
+        self.save_button.pack(side=tk.LEFT)
+        
         return control_frame
 
     def trigger_analysis(self):
@@ -23,6 +27,8 @@ class CurveComparisonPanel(BaseCurvePanel):
     def run_analysis_with_data(self):
         try:
             super().run_analysis()
+            # Enable save button after successful analysis
+            self.save_button.config(state=tk.NORMAL)
         except Exception as e:
             messagebox.showerror("Analysis Error", str(e))
         finally:

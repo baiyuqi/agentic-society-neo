@@ -30,7 +30,6 @@ class PersonalityBrowser:
         self.canvas = None
         self.fig = None
         self.axs = None
-        self.plot_empty()
 
         # --- Control Frame ---
         control_frame = ttk.Frame(bottom_frame)
@@ -39,6 +38,12 @@ class PersonalityBrowser:
         self.file_label.pack(side=LEFT, padx=10)
         browse_button = ttk.Button(control_frame, text="Browse File...", command=self.browse_file)
         browse_button.pack(side=LEFT, padx=10)
+
+        # SVG export button
+        self.svg_button = ttk.Button(control_frame, text="Save as SVG", command=self.save_to_svg, state=DISABLED)
+        self.svg_button.pack(side=LEFT, padx=10)
+
+        self.plot_empty()
 
         # --- Table Frame ---
         table_frame = ttk.Frame(bottom_frame)
@@ -90,6 +95,9 @@ class PersonalityBrowser:
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.top_frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
+
+        # Disable SVG export button for empty plot
+        self.svg_button.config(state=DISABLED)
     def plot_fill(self,pjson):
         import matplotlib
         matplotlib.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'STHeiti', 'Arial Unicode MS']
@@ -117,6 +125,9 @@ class PersonalityBrowser:
             col = i % 2
             self.axs[row, col].set_title('')
         self.canvas.draw()
+
+        # Enable SVG export button
+        self.svg_button.config(state=NORMAL)
     def set_language(self, lang):
         self.lang = lang
         self.title_label.config(text=LANGUAGES[lang]['personality'])
@@ -128,4 +139,26 @@ class PersonalityBrowser:
         df = pd.read_sql_query("select * from personality", engine)
         self.table.model.df = df
         self.table.redraw()
+
+    def save_to_svg(self):
+        """Save the current matplotlib figure as SVG vector image"""
+        if self.fig is None:
+            from tkinter import messagebox
+            messagebox.showwarning("No Plot", "Please browse a file and select a persona first to generate a plot.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            title="Save Plot as SVG",
+            defaultextension=".svg",
+            filetypes=[("SVG Files", "*.svg"), ("All Files", "*.*")]
+        )
+
+        if file_path:
+            try:
+                self.fig.savefig(file_path, format="svg", bbox_inches="tight")
+                from tkinter import messagebox
+                messagebox.showinfo("Success", f"Plot saved successfully to:\n{file_path}")
+            except Exception as e:
+                from tkinter import messagebox
+                messagebox.showerror("Error", f"Failed to save SVG: {e}")
 

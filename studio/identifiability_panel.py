@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -27,29 +27,34 @@ class IdentifiabilityPanel:
         title_label.pack(side=tk.LEFT, padx=(0, 20))
 
         self.run_button = ttk.Button(control_frame, text="运行分析", command=self.start_analysis)
-        self.run_button.pack(side=tk.LEFT)
+        self.run_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        # --- Main Paned Window for Side-by-Side Comparison ---
-        paned_window = ttk.PanedWindow(self.main, orient=tk.HORIZONTAL)
-        paned_window.pack(fill=tk.BOTH, expand=True)
+        self.save_button = ttk.Button(control_frame, text="Save to SVG", command=self.save_to_svg, state=tk.DISABLED)
+        self.save_button.pack(side=tk.LEFT)
 
-        # --- Left Panel (Standard Samples) ---
-        self.frame_samples = ttk.Frame(paned_window)
-        self.ari_label_samples = ttk.Label(self.frame_samples, text="ARI: -", font=("Helvetica", 12, "bold"))
-        self.ari_label_samples.pack(pady=5, padx=10, anchor='w')
-        self.fig_samples, self.ax_samples = plt.subplots(figsize=(6, 5))
-        self.canvas_samples = FigureCanvasTkAgg(self.fig_samples, master=self.frame_samples)
-        self.canvas_samples.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        paned_window.add(self.frame_samples, weight=1)
+        # --- Combined Plot Frame ---
+        self.plot_frame = ttk.Frame(self.main)
+        self.plot_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # --- Right Panel (Poor Samples) ---
-        self.frame_poor = ttk.Frame(paned_window)
-        self.ari_label_poor = ttk.Label(self.frame_poor, text="ARI: -", font=("Helvetica", 12, "bold"))
-        self.ari_label_poor.pack(pady=5, padx=10, anchor='w')
-        self.fig_poor, self.ax_poor = plt.subplots(figsize=(6, 5))
-        self.canvas_poor = FigureCanvasTkAgg(self.fig_poor, master=self.frame_poor)
-        self.canvas_poor.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        paned_window.add(self.frame_poor, weight=1)
+        # ARI labels frame
+        ari_frame = ttk.Frame(self.plot_frame)
+        ari_frame.pack(fill=tk.X, pady=(0, 10))
+
+        self.ari_label_samples = ttk.Label(ari_frame, text="标准样本 ARI: -", font=("Helvetica", 10, "bold"))
+        self.ari_label_samples.pack(side=tk.LEFT, padx=(0, 20))
+
+        self.ari_label_poor = ttk.Label(ari_frame, text="贫乏样本 ARI: -", font=("Helvetica", 10, "bold"))
+        self.ari_label_poor.pack(side=tk.LEFT)
+
+        # Single figure with subplots and proper aspect ratio
+        self.fig, (self.ax_samples, self.ax_poor) = plt.subplots(1, 2, figsize=(14, 6))
+        # Set aspect ratio for PCA plots - use "auto" for better visualization
+        self.ax_samples.set_aspect("auto")
+        self.ax_poor.set_aspect("auto")
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        # Use constrained layout to maintain proper proportions
+        self.fig.set_constrained_layout(True)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
         self.progress_manager = ProgressManager(self.main)
 
@@ -81,14 +86,17 @@ class IdentifiabilityPanel:
             if results:
                 if results.get('samples'):
                     self.display_results(
-                        results['samples'], self.ax_samples, self.canvas_samples, 
+                        results['samples'], self.ax_samples, 
                         self.ari_label_samples, "标准样本 (Samples 300)"
                     )
                 if results.get('poor'):
                     self.display_results(
-                        results['poor'], self.ax_poor, self.canvas_poor, 
+                        results['poor'], self.ax_poor, 
                         self.ari_label_poor, "贫乏样本 (Poor 300)"
                     )
+                # Enable save button and redraw canvas
+                self.save_button.config(state=tk.NORMAL)
+                self.canvas.draw()
 
         def on_error(error):
             messagebox.showerror("分析错误", f"发生错误: {error}")
@@ -121,8 +129,8 @@ class IdentifiabilityPanel:
             'predicted_labels': predicted_labels
         }
 
-    def display_results(self, result, ax, canvas, ari_label, title):
-        """Displays the results on the given matplotlib axis and canvas."""
+    def display_results(self, result, ax, ari_label, title):
+        """Displays the results on the given matplotlib axis."""
         ax.clear()
         
         ari_score = result['ari_score']
@@ -145,8 +153,6 @@ class IdentifiabilityPanel:
         ax.set_ylabel(f'PC 2 ({result["explained_variance"][1]:.1%} variance)')
         ax.legend(title='Legend', fontsize='small')
         ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-        
-        canvas.draw()
 
     def set_language(self, lang):
         pass
@@ -154,3 +160,19 @@ class IdentifiabilityPanel:
     def setData(self, data, update_callback):
         # Panel is self-contained, does not need external data
         pass
+
+    def save_to_svg(self):
+        """Save the combined matplotlib figure as SVG vector image"""
+        if self.fig is None:
+            messagebox.showwarning("No Plot", "Please run analysis first to generate plots.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            title="Save Combined Plot as SVG",
+            defaultextension=".svg",
+            filetypes=[("SVG Files", "*.svg"), ("All Files", "*.*")]
+        )
+        
+        if file_path:
+            self.fig.savefig(file_path, format="svg", bbox_inches="tight")
+            messagebox.showinfo("Success", f"Combined plot saved successfully to:\n{file_path}")

@@ -25,6 +25,9 @@ class PersonalityAnalysis(BaseCurvePanel):
 
         self.submit_button = ttk.Button(control_frame, text=LANGUAGES[self.lang]['create'], command=self.trigger_analysis, state=tk.DISABLED)
         self.submit_button.grid(row=3, column=0, columnspan=2, pady=(10,0))
+
+        self.save_button = ttk.Button(control_frame, text="Save to SVG", command=self.save_to_svg, state=tk.DISABLED)
+        self.save_button.grid(row=4, column=0, columnspan=2, pady=(5,0))
         
         return control_frame
 
@@ -50,6 +53,8 @@ class PersonalityAnalysis(BaseCurvePanel):
     def run_analysis_with_data(self):
         try:
             super().run_analysis()
+            # Enable save button after successful analysis
+            self.save_button.config(state=tk.NORMAL)
         except Exception as e:
             messagebox.showerror("Analysis Error", str(e))
         finally:
