@@ -137,6 +137,10 @@ Test and validate whether LLM role-playing virtual characters possess stable and
 ![Mahalanobis Distance Analysis 2](img/matabolis-distance-normal-300-2.jpg)
 *Figure: Mahalanobis distance analysis showing personality trait convergence over 300 tests - Part 2*
 
+![Convergence Analysis 3](img/convergence.svg)
+*Figure: Mahalanobis distance analysis showing personality trait convergence over the Dimension of Detail - Part 3*
+
+
 ### 3.1.2 LLM Character Profile Identifiability Test
 
 **Research Objective:**
