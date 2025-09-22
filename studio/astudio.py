@@ -4,6 +4,7 @@ from tkinter import ttk
 from tkinter import filedialog
 import os
 from tkinter import font
+from ttkthemes import ThemedStyle
 
 from asociety.repository.database import set_currentdb
 from studio.single_mahalanobis_panel import SingleMahalanobisPanel
@@ -60,11 +61,19 @@ LANGUAGES = {
         'identifiability_analysis': '可识别性分析',
         'stability_analysis': '稳定性分析',
         'special_analysis': '专题分析',
-        'select_db': '选择数据库文件...', 
+        'select_db': '选择数据库文件...',
         'run_analysis': '运行分析',
         'run_factor_analysis': '运行因素分析',
         'configuration': '配置',
-        'switch_db': '切换数据库'
+        'switch_db': '切换数据库',
+        'theme': '主题',
+        'menu_theme': '主题/Theme',
+        'arc': 'Arc (现代)',
+        'adapta': 'Adapta (绿色)',
+        'equilux': 'Equilux (深色)',
+        'breeze': 'Breeze (清新)',
+        'clam': 'Clam (默认)',
+        'vista': 'Vista (Windows)'
     },
     'en': {
         'file': 'File',
@@ -100,28 +109,56 @@ LANGUAGES = {
         'identifiability_analysis': 'Identifiability Analysis',
         'stability_analysis': 'Stability Analysis',
         'special_analysis': 'Special Analysis',
-        'select_db': 'Select Database File...', 
+        'select_db': 'Select Database File...',
         'run_analysis': 'Run Analysis',
         'run_factor_analysis': 'Run Factor Analysis',
         'configuration': 'Configuration',
-        'switch_db': 'Switch Database'
+        'switch_db': 'Switch Database',
+        'theme': 'Theme',
+        'menu_theme': '主题/Theme',
+        'arc': 'Arc (Modern)',
+        'adapta': 'Adapta (Green)',
+        'equilux': 'Equilux (Dark)',
+        'breeze': 'Breeze (Fresh)',
+        'clam': 'Clam (Default)',
+        'vista': 'Vista (Windows)'
     }
 }
 
 class MainWindow:
     def __init__(self, root) -> None:
         self.lang = 'zh'
+        self.current_theme = 'arc'
         self.root = root
         root.title('AgenticSociety')
-        # root.iconbitmap()   
-        
-        lang_frame = ttk.Frame(root)
-        lang_frame.pack(anchor=NE, padx=10, pady=2)
+        # root.iconbitmap()
+
+        # Create themed style
+        self.style = ThemedStyle(root)
+        self.style.set_theme(self.current_theme)
+
+        control_frame = ttk.Frame(root)
+        control_frame.pack(anchor=NE, padx=10, pady=2)
+
+        # Language control
+        lang_frame = ttk.Frame(control_frame)
+        lang_frame.pack(side=LEFT, padx=(0, 10))
         ttk.Label(lang_frame, text="语言/Language:", font=("Helvetica", 11)).pack(side=LEFT)
         self.lang_var = StringVar(value=self.lang)
         lang_combo = ttk.Combobox(lang_frame, textvariable=self.lang_var, values=['zh', 'en'], width=6, state='readonly')
         lang_combo.pack(side=LEFT, padx=5)
         lang_combo.bind('<<ComboboxSelected>>', self.on_lang_change)
+
+        # Theme control
+        theme_frame = ttk.Frame(control_frame)
+        theme_frame.pack(side=LEFT)
+        ttk.Label(theme_frame, text="主题/Theme:", font=("Helvetica", 11)).pack(side=LEFT)
+        self.theme_var = StringVar(value=self.current_theme)
+        theme_combo = ttk.Combobox(theme_frame, textvariable=self.theme_var,
+                                  values=['arc', 'adapta', 'equilux', 'breeze', 'clam', 'vista'],
+                                  width=12, state='readonly')
+        theme_combo.pack(side=LEFT, padx=5)
+        theme_combo.bind('<<ComboboxSelected>>', self.on_theme_change)
 
         self.menu(root)
         self.main = ttk.Frame(root, style='TFrame')
@@ -171,10 +208,19 @@ class MainWindow:
         menubar = Menu(root, borderwidth=20)
         root.config(menu=menubar)
         filemenu = Menu(menubar, tearoff=0, border=12)
-        
+
         filemenu.add_command(label=LANGUAGES[self.lang].get('configuration', 'Configuration'), command=self.open_config_panel)
         filemenu.add_command(label=LANGUAGES[self.lang].get('switch_db', 'Switch Database'), command=self.open_db)
         filemenu.add_command(label=LANGUAGES[self.lang].get('close', 'Close'), command=self.donothing)
+        filemenu.add_separator()
+
+        # Theme submenu
+        thememenu = Menu(filemenu, tearoff=0)
+        for theme in ['arc', 'adapta', 'equilux', 'breeze', 'clam', 'vista']:
+            thememenu.add_command(label=LANGUAGES[self.lang].get(theme, theme),
+                                 command=lambda t=theme: self.change_theme(t))
+        filemenu.add_cascade(label=LANGUAGES[self.lang].get('menu_theme', 'Theme'), menu=thememenu)
+
         filemenu.add_separator()
         filemenu.add_command(label=LANGUAGES[self.lang].get('exit', 'Exit'), command=root.quit)
         menubar.add_cascade(label=LANGUAGES[self.lang].get('file', 'File'), menu=filemenu)
@@ -211,6 +257,12 @@ class MainWindow:
         self.recreate(tv)
         tv.config(height=100)
         tv.bind("<<TreeviewSelect>>", self.treeSelect)
+
+        # Configure treeview font size and row height for better readability
+        style = ttk.Style()
+        style.configure("Treeview", font=('Helvetica', 11), rowheight=30)
+        style.configure("Treeview.Heading", font=('Helvetica', 12, 'bold'))
+
         return tv
 
     def updateTree(self):
@@ -328,15 +380,18 @@ class MainWindow:
         if new_lang != self.lang:
             self.set_language(new_lang)
 
+    def on_theme_change(self, event=None):
+        new_theme = self.theme_var.get()
+        if new_theme != self.current_theme:
+            self.change_theme(new_theme)
+
+    def change_theme(self, theme_name):
+        self.current_theme = theme_name
+        self.theme_var.set(theme_name)
+        self.style.set_theme(theme_name)
+
 if __name__ == "__main__":
     root = Tk()
-    style = ttk.Style()
-
-    style.theme_use('clam')
-    style.configure('TFrame', background='#f0f0f0')
-    style.configure('TButton', font=('Helvetica', 12), background='#e0e0e0', foreground='black')
-    style.map('TButton', background=[('active', '#d0d0d0')])
-    style.configure('TLabel', background='#f0f0f0', font=('Helvetica', 12), foreground='black')
 
     app = MainWindow(root)
     root.state('zoomed')

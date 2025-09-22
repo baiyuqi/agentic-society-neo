@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>性格曲线分析 - Agentic Society</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/components/file-tree.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+        }
+        .chart-container {
+            position: relative;
+            min-height: 300px;
+            margin-bottom: 20px;
+        }
+        .control-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .distance-table {
+            font-size: 0.9rem;
+        }
+        .distance-table th {
+            background-color: #e9ecef;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container-fluid">
+            <!-- Header -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-graph-up me-2"></i>性格曲线分析</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Control Panel -->
+                    <div class="control-panel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">选择模型数据库:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" readonly
+                                           :value="selectedDatabase ? getDbDisplayName(selectedDatabase) : '请选择数据库...'"
+                                           placeholder="请选择数据库...">
+                                    <button class="btn btn-outline-secondary" type="button" @click="openFileTree">
+                                        <i class="bi bi-folder"></i> 浏览
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">性别筛选:</label>
+                                <select class="form-select" v-model="selectedGender" @change="runAnalysis">
+                                    <option value="">全部</option>
+                                    <option value="male">男性</option>
+                                    <option value="female">女性</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button class="btn btn-primary" @click="runAnalysis" :disabled="!selectedDatabase">
+                                    <i class="bi bi-play-circle me-1"></i>运行分析
+                                </button>
+                                <button class="btn btn-outline-secondary ms-2" @click="saveToSVG" :disabled="!analysisComplete">
+                                    <i class="bi bi-download me-1"></i>保存为SVG
+                                </button>
+                                <button class="btn btn-outline-info ms-2" @click="testChart">
+                                    <i class="bi bi-bug me-1"></i>测试图表
+                                </button>
+                                <button class="btn btn-outline-warning ms-2" @click="forceRedrawCharts" :disabled="!analysisComplete">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>重绘图表
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="loading" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </div>
+
+                    <div v-else-if="error" class="alert alert-danger">
+                        {{ error }}
+                    </div>
+
+                    <!-- Personality Curves -->
+                    <div v-if="analysisComplete" class="mt-4">
+                        <div class="row">
+                            <div class="col-md-4" v-for="index in 5" :key="index">
+                                <div class="chart-container">
+                                    <canvas :id="'traitChart' + (index - 1)"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Distance Table -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6><i class="bi bi-table me-2"></i>与人类基线距离分析 (年龄20-70岁)</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped distance-table">
+                                        <thead>
+                                            <tr>
+                                                <th>模型</th>
+                                                <th>神经质</th>
+                                                <th>外向性</th>
+                                                <th>开放性</th>
+                                                <th>宜人性</th>
+                                                <th>尽责性</th>
+                                                <th>欧氏距离</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(row, index) in distanceTable" :key="index">
+                                                <td>{{ row.model }}</td>
+                                                <td>{{ row.N }}</td>
+                                                <td>{{ row.E }}</td>
+                                                <td>{{ row.O }}</td>
+                                                <td>{{ row.A }}</td>
+                                                <td>{{ row.C }}</td>
+                                                <td><strong>{{ row.euclidean }}</strong></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="selectedDatabase" class="text-center text-muted mt-5">
+                        <i class="bi bi-graph-up display-4"></i>
+                        <p class="mt-3">点击"运行分析"开始性格曲线分析</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Tree Component -->
+        <file-tree ref="fileTree"
+                   modal-title="选择数据库文件"
+                   search-placeholder="搜索数据库文件..."
+                   file-extension=".db"
+                   @selected="onFileSelected">
+        </file-tree>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+
+        const app = createApp({
+            setup() {
+                const databases = ref([]);
+                const selectedDatabase = ref('');
+                const selectedGender = ref('');
+                const loading = ref(false);
+                const error = ref(null);
+                const analysisComplete = ref(false);
+                const traitCharts = ref([]);
+                const distanceTable = ref([]);
+                const chartObjects = ref({});
+                const fileTreeRef = ref(null);
+
+                // 获取数据库显示名称
+                const getDbDisplayName = (path) => {
+                    const db = databases.value.find(db => db.path === path);
+                    return db ? db.name : path;
+                };
+
+                const loadDatabases = async () => {
+                    try {
+                        const response = await fetch('/api/databases');
+                        databases.value = await response.json();
+                    } catch (err) {
+                        error.value = '加载数据库列表失败: ' + err.message;
+                    }
+                };
+
+                // 打开文件树模态框
+                const openFileTree = () => {
+                    if (fileTreeRef.value) {
+                        fileTreeRef.value.open();
+                    }
+                };
+
+                // 文件选择回调
+                const onFileSelected = (file) => {
+                    if (file && file.path) {
+                        selectedDatabase.value = file.path;
+                        onDatabaseChange();
+                    }
+                };
+
+                const onDatabaseChange = () => {
+                    analysisComplete.value = false;
+                    destroyCharts();
+                };
+
+                const runAnalysis = async () => {
+                    if (!selectedDatabase.value) return;
+
+                    try {
+                        loading.value = true;
+                        error.value = null;
+                        analysisComplete.value = false;
+                        destroyCharts();
+
+                        // 确保ChartJS库已加载
+                        if (typeof Chart === 'undefined') {
+                            throw new Error('ChartJS库未正确加载，请刷新页面重试');
+                        }
+
+                        // 调用后端API进行分析
+                        const response = await fetch('/api/analysis/personality-curve', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                db_path: selectedDatabase.value,
+                                gender: selectedGender.value
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('分析失败');
+                        }
+
+                        const result = await response.json();
+
+                        // 等待一小段时间确保DOM完全渲染
+                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        // 检查canvas元素是否存在
+                        if (!checkCanvasElements()) {
+                            console.warn('Canvas elements not found, retrying in 200ms');
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                        }
+
+                        renderCharts(result);
+                        updateDistanceTable(result.distances);
+                        analysisComplete.value = true;
+
+                        // 最终检查并重绘
+                        setTimeout(() => {
+                            if (analysisComplete.value) {
+                                forceRedrawCharts();
+                            }
+                        }, 300);
+
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const renderCharts = (result) => {
+                    console.log('API Response:', result);
+                    const traitNames = ['神经质', '外向性', '开放性', '宜人性', '尽责性'];
+                    const colors = ['#d62728', '#ff7f0e', '#2ca02c', '#9467bd', '#1f77b4'];
+
+                    // 使用重试机制创建图表
+                    const createChartWithRetry = (traitName, index, retryCount = 0) => {
+                        const canvasId = 'traitChart' + index;
+                        const ctx = document.getElementById(canvasId);
+
+                        if (!ctx) {
+                            console.log('Canvas not found for', canvasId);
+                            if (retryCount < 3) {
+                                setTimeout(() => createChartWithRetry(traitName, index, retryCount + 1), 100);
+                            }
+                            return;
+                        }
+
+                        // 先销毁已存在的图表
+                        if (chartObjects.value[canvasId]) {
+                            chartObjects.value[canvasId].destroy();
+                            delete chartObjects.value[canvasId];
+                        }
+
+                        // 清除之前的覆盖文本
+                        const overlay = ctx.parentElement.querySelector('.chart-overlay');
+                        if (overlay) {
+                            overlay.remove();
+                        }
+
+                        const chartData = result.curves[traitName];
+                        if (!chartData) {
+                            console.log('No chart data for trait:', traitName);
+                            renderEmptyChart(ctx, traitName, '无可用数据');
+                            return;
+                        }
+
+                        const ages = chartData.ages || [];
+                        const humanData = chartData.human || [];
+                        const modelData = chartData.model || [];
+
+                        console.log(`Trait ${traitName}: ages=${ages.length}, human=${humanData.length}, model=${modelData.length}`);
+
+                        // Validate data lengths
+                        if (ages.length === 0 || (humanData.length === 0 && modelData.length === 0)) {
+                            console.log('Insufficient data for', traitName);
+                            renderEmptyChart(ctx, traitName, '数据不足');
+                            return;
+                        }
+
+                        // Ensure all arrays have the same length
+                        const minLength = Math.min(ages.length, humanData.length || Infinity, modelData.length || Infinity);
+                        const validAges = ages.slice(0, minLength);
+                        const validHuman = humanData.slice(0, minLength);
+                        const validModel = modelData.slice(0, minLength);
+
+                        try {
+                            const datasets = [];
+
+                            if (validHuman.length > 0) {
+                                datasets.push({
+                                    label: '人类基线',
+                                    data: validHuman,
+                                    borderColor: 'purple',
+                                    borderDash: [5, 5],
+                                    borderWidth: 2,
+                                    fill: false,
+                                    pointRadius: 0
+                                });
+                            }
+
+                            if (validModel.length > 0) {
+                                datasets.push({
+                                    label: result.model_name,
+                                    data: validModel,
+                                    borderColor: colors[index],
+                                    borderWidth: 2,
+                                    backgroundColor: colors[index] + '20',
+                                    fill: true,
+                                    tension: 0.4,
+                                    pointRadius: 0
+                                });
+                            }
+
+                            // 确保canvas有正确的尺寸
+                            const container = ctx.parentElement;
+                            if (container && container.offsetWidth > 0 && container.offsetHeight > 0) {
+                                ctx.width = container.offsetWidth;
+                                ctx.height = container.offsetHeight;
+                            }
+
+                            const chart = new Chart(ctx, {
+                                type: 'line',
+                                data: {
+                                    labels: validAges,
+                                    datasets: datasets
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    animation: {
+                                        duration: 0 // 禁用动画避免初始化问题
+                                    },
+                                    plugins: {
+                                        title: {
+                                            display: true,
+                                            text: traitName,
+                                            font: {
+                                                size: 14,
+                                                weight: 'bold'
+                                            }
+                                        },
+                                        legend: {
+                                            display: datasets.length > 0,
+                                            position: 'top'
+                                        }
+                                    },
+                                    scales: {
+                                        x: {
+                                            type: 'linear',
+                                            title: {
+                                                display: true,
+                                                text: '年龄'
+                                            },
+                                            ticks: {
+                                                stepSize: 10
+                                            }
+                                        },
+                                        y: {
+                                            type: 'linear',
+                                            title: {
+                                                display: true,
+                                                text: '得分'
+                                            },
+                                            min: 0,
+                                            max: 100,
+                                            ticks: {
+                                                stepSize: 20
+                                            }
+                                        }
+                                    },
+                                    interaction: {
+                                        mode: 'index',
+                                        intersect: false
+                                    },
+                                    hover: {
+                                        mode: 'index',
+                                        intersect: false
+                                    }
+                                }
+                            });
+
+                            console.log('Chart created successfully for', traitName);
+                            chartObjects.value[canvasId] = chart;
+                        } catch (err) {
+                            console.error('Error creating chart for', traitName, ':', err);
+                            if (retryCount < 3) {
+                                setTimeout(() => createChartWithRetry(traitName, index, retryCount + 1), 200);
+                            } else {
+                                renderEmptyChart(ctx, traitName, '图表创建失败');
+                            }
+                        }
+                    };
+
+                    // 逐个创建图表，避免同时创建导致的资源竞争
+                    traitNames.forEach((traitName, index) => {
+                        setTimeout(() => {
+                            createChartWithRetry(traitName, index);
+                        }, index * 100); // 间隔100ms创建每个图表
+                    });
+                };
+
+                renderEmptyChart(ctx, title, message) {
+                    try {
+                        // 先销毁已存在的图表
+                        const canvasId = ctx.id;
+                        if (this.chartObjects[canvasId]) {
+                            this.chartObjects[canvasId].destroy();
+                            delete this.chartObjects[canvasId];
+                        }
+
+                        // 清除之前的覆盖文本
+                        const existingOverlay = ctx.parentElement.querySelector('.chart-overlay');
+                        if (existingOverlay) {
+                            existingOverlay.remove();
+                        }
+
+                        // 创建空图表
+                        const chart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: [],
+                                datasets: []
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: title,
+                                        font: {
+                                            size: 14,
+                                            weight: 'bold'
+                                        }
+                                    },
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        enabled: false
+                                    }
+                                },
+                                scales: {
+                                    x: { display: false },
+                                    y: { display: false }
+                                }
+                            }
+                        });
+
+                        // 添加文本覆盖
+                        const overlay = document.createElement('div');
+                        overlay.className = 'chart-overlay';
+                        overlay.style.position = 'absolute';
+                        overlay.style.top = '50%';
+                        overlay.style.left = '50%';
+                        overlay.style.transform = 'translate(-50%, -50%)';
+                        overlay.style.color = '#999';
+                        overlay.style.fontSize = '14px';
+                        overlay.style.textAlign = 'center';
+                        overlay.textContent = message;
+
+                        ctx.parentElement.style.position = 'relative';
+                        ctx.parentElement.appendChild(overlay);
+
+                        this.chartObjects[canvasId] = chart;
+                    } catch (error) {
+                        console.error('Error rendering empty chart:', error);
+                    }
+                },
+
+                updateDistanceTable(distances) {
+                    this.distanceTable = [{
+                        model: distances.model_name,
+                        N: distances.neuroticism ? distances.neuroticism.toFixed(2) : 'N/A',
+                        E: distances.extraversion ? distances.extraversion.toFixed(2) : 'N/A',
+                        O: distances.openness ? distances.openness.toFixed(2) : 'N/A',
+                        A: distances.agreeableness ? distances.agreeableness.toFixed(2) : 'N/A',
+                        C: distances.conscientiousness ? distances.conscientiousness.toFixed(2) : 'N/A',
+                        euclidean: distances.euclidean ? distances.euclidean.toFixed(2) : 'N/A'
+                    }];
+                },
+
+                destroyCharts() {
+                    // 销毁所有图表对象
+                    Object.keys(this.chartObjects).forEach(canvasId => {
+                        const chart = this.chartObjects[canvasId];
+                        if (chart && typeof chart.destroy === 'function') {
+                            try {
+                                chart.destroy();
+                            } catch (error) {
+                                console.warn('Error destroying chart:', error);
+                            }
+                        }
+                    });
+                    this.chartObjects = {};
+
+                    // 清除所有覆盖文本
+                    const overlays = document.querySelectorAll('.chart-overlay');
+                    overlays.forEach(overlay => overlay.remove());
+
+                    // 重置所有canvas元素
+                    const canvases = document.querySelectorAll('canvas[id^="traitChart"]');
+                    canvases.forEach(canvas => {
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        }
+                    });
+                },
+
+                async saveToSVG() {
+                    // 实现SVG保存功能
+                    alert('SVG保存功能需要后端支持');
+                },
+
+                testChart() {
+                    // Test function to check if Chart.js is working
+                    const testCtx = document.createElement('canvas');
+                    testCtx.width = 400;
+                    testCtx.height = 300;
+                    document.body.appendChild(testCtx);
+
+                    try {
+                        const testChart = new Chart(testCtx, {
+                            type: 'line',
+                            data: {
+                                labels: [1, 2, 3, 4, 5],
+                                datasets: [{
+                                    label: 'Test Data',
+                                    data: [10, 20, 30, 40, 50],
+                                    borderColor: 'blue',
+                                    borderWidth: 2
+                                }]
+                            },
+                            options: {
+                                responsive: true
+                            }
+                        });
+                        console.log('Test chart created successfully');
+                        alert('ChartJS测试图表创建成功！');
+                    } catch (error) {
+                        console.error('Test chart error:', error);
+                        alert('ChartJS测试失败：' + error.message);
+                    }
+                },
+
+                // 强制重绘所有图表
+                forceRedrawCharts() {
+                    Object.keys(this.chartObjects).forEach(canvasId => {
+                        const chart = this.chartObjects[canvasId];
+                        if (chart) {
+                            try {
+                                chart.update();
+                                console.log('Chart updated:', canvasId);
+                            } catch (error) {
+                                console.warn('Error updating chart:', canvasId, error);
+                            }
+                        }
+                    });
+                },
+
+                // 设置DOM变化监控
+                setupDOMObserver() {
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach((mutation) => {
+                            if (mutation.type === 'childList') {
+                                mutation.addedNodes.forEach((node) => {
+                                    if (node.nodeType === 1 && node.matches && node.matches('canvas[id^="traitChart"]')) {
+                                        console.log('Canvas element added to DOM:', node.id);
+                                        // 如果analysisComplete为true，尝试重新渲染图表
+                                        if (this.analysisComplete) {
+                                            setTimeout(() => {
+                                                this.forceRedrawCharts();
+                                            }, 100);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    });
+
+                    observer.observe(document.body, {
+                        childList: true,
+                        subtree: true
+                    });
+
+                    this.domObserver = observer;
+                },
+
+                // 检查所有canvas元素是否存在
+                checkCanvasElements() {
+                    const traitNames = ['神经质', '外向性', '开放性', '宜人性', '尽责性'];
+                    let allExist = true;
+
+                    traitNames.forEach((traitName, index) => {
+                        const canvasId = 'traitChart' + index;
+                        const ctx = document.getElementById(canvasId);
+                        if (!ctx) {
+                            console.log('Canvas missing:', canvasId);
+                            allExist = false;
+                        }
+                    });
+
+                    return allExist;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

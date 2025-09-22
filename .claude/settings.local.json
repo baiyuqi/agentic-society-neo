@@ -20,9 +20,12 @@
       "Read(/D:\\mcp-space\\agentic-society-neo\\asociety/**)",
       "Read(/D:\\mcp-space\\agentic-society-neo\\tools/**)",
       "Bash(sqlite3:*)",
-      "Bash(poetry shell)"
+      "Bash(poetry shell)",
+      "Bash(pip install:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "important": "1.用poetry环境！不要pip install！2.这是windows系统！"
 }

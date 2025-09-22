@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>性格浏览 - Agentic Society</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/file-tree-component.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+        }
+        .table {
+            font-size: 0.9rem;
+        }
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            color: #495057;
+        }
+        .chart-container {
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        .persona-row:hover {
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+        .persona-row.selected {
+            background-color: #e3f2fd;
+        }
+
+        /* Sliding Panel Styles */
+        .sliding-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .sliding-panel.open {
+            right: 0;
+        }
+
+        .panel-toggle {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px 0 0 5px;
+            padding: 10px 5px;
+            cursor: pointer;
+            z-index: 1001;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        .panel-toggle:hover {
+            background: #5a67d8;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .panel-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        .panel-close:hover {
+            color: #495057;
+        }
+
+        .chart-container-panel {
+            height: 200px;
+            margin-bottom: 15px;
+        }
+
+        .personality-details {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .detail-value {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container-fluid">
+            <!-- Database Selection -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-database me-2"></i>选择数据源</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择模型数据库:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" readonly
+                                   :value="selectedDatabase ? getDbDisplayName(selectedDatabase) : '请选择数据库...'"
+                                   placeholder="请选择数据库...">
+                            <button class="btn btn-outline-secondary" type="button" @click="openFileTree">
+                                <i class="bi bi-folder"></i> 浏览
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Tree Component -->
+            <file-tree ref="fileTreeRef"
+                       modal-title="选择数据源"
+                       search-placeholder="搜索文件或目录..."
+                       file-extension=".db"
+                       :allow-directory-selection="true"
+                       @selected="onFileSelected">
+            </file-tree>
+
+            <!-- Main Content -->
+            <div v-if="selectedDatabase">
+                <!-- Header -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-person-badge me-2"></i>性格浏览</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted">当前数据库: {{ getCurrentDbName() }}</span>
+                            <div class="btn-group">
+                                <button class="btn btn-outline-primary btn-sm" @click="loadPersonas">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" @click="selectedDatabase = ''">
+                                    <i class="bi bi-database me-1"></i>更换数据源
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="loading" class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                        <div v-else-if="error" class="alert alert-danger">
+                            {{ error }}
+                        </div>
+                        <div v-else>
+                            <!-- Personas Table -->
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>年龄</th>
+                                            <th>性别</th>
+                                            <th>职业</th>
+                                            <th>开放性</th>
+                                            <th>尽责性</th>
+                                            <th>外向性</th>
+                                            <th>宜人性</th>
+                                            <th>神经质</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="persona in personas" :key="persona.id"
+                                            :class="{'persona-row': true, 'selected': selectedPersona && selectedPersona.id === persona.id}"
+                                            @click="selectPersona(persona)">
+                                            <td>{{ persona.id }}</td>
+                                            <td>{{ persona.age }}</td>
+                                            <td>{{ persona.gender }}</td>
+                                            <td>{{ persona.occupation }}</td>
+                                            <td>{{ persona.openness ? persona.openness.toFixed(2) : 'N/A' }}</td>
+                                            <td>{{ persona.conscientiousness ? persona.conscientiousness.toFixed(2) : 'N/A' }}</td>
+                                            <td>{{ persona.extraversion ? persona.extraversion.toFixed(2) : 'N/A' }}</td>
+                                            <td>{{ persona.agreeableness ? persona.agreeableness.toFixed(2) : 'N/A' }}</td>
+                                            <td>{{ persona.neuroticism ? persona.neuroticism.toFixed(2) : 'N/A' }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div v-if="personas.length === 0" class="text-center text-muted mt-5">
+                                <i class="bi bi-people display-4"></i>
+                                <p class="mt-3">没有找到角色数据</p>
+                            </div>
+
+                            <!-- Personality Charts -->
+                            <div v-if="selectedPersona" class="mt-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6><i class="bi bi-graph-up me-2"></i>ID {{ selectedPersona.id }} 的详细性格特质分析</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="chart-container">
+                                                    <canvas id="extraversionChart"></canvas>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="chart-container">
+                                                    <canvas id="agreeablenessChart"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row mt-4">
+                                            <div class="col-md-6">
+                                                <div class="chart-container">
+                                                    <canvas id="conscientiousnessChart"></canvas>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="chart-container">
+                                                    <canvas id="neuroticismChart"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row mt-4">
+                                            <div class="col-md-6">
+                                                <div class="chart-container">
+                                                    <canvas id="opennessChart"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sliding Panel for Charts -->
+        <button class="panel-toggle" @click="togglePanel" v-if="selectedPersona">
+            <i class="bi" :class="panelOpen ? 'bi-chevron-right' : 'bi-chevron-left'"></i>
+        </button>
+
+        <div class="sliding-panel" :class="{open: panelOpen}" v-if="selectedPersona">
+            <div class="panel-header">
+                <h5><i class="bi bi-graph-up me-2"></i>性格曲线分析</h5>
+                <button class="panel-close" @click="closePanel">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+
+            <!-- Personality Summary -->
+            <div class="personality-details">
+                <h6>性格维度得分</h6>
+                <div class="detail-item" v-for="(score, trait) in personalitySummary" :key="trait">
+                    <span class="detail-label">{{ getTraitName(trait) }}</span>
+                    <span class="detail-value">{{ score.toFixed(2) }}</span>
+                </div>
+            </div>
+
+            <!-- Individual Trait Charts -->
+            <div v-for="(chart, index) in panelCharts" :key="index" class="chart-container-panel">
+                <canvas :id="'panelChart' + index"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Tree Component Template -->
+    <script type="text/x-template" id="file-tree-template">
+        <div class="file-tree-container">
+            <!-- Modal for file selection -->
+            <div class="modal fade" id="fileTreeModal" tabindex="-1" aria-labelledby="fileTreeModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="fileTreeModalLabel">
+                                <i class="bi bi-folder me-2"></i>{{ modalTitle }}
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- Search box -->
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" v-model="searchQuery"
+                                           :placeholder="searchPlaceholder" @input="filterTree">
+                                    <button class="btn btn-outline-secondary" type="button" @click="clearSearch">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- File tree -->
+                            <div class="file-tree" style="max-height: 400px; overflow-y: auto;">
+                                <div v-if="loading" class="text-center py-3">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">加载中...</span>
+                                    </div>
+                                </div>
+                                <div v-else-if="filteredItems.length === 0" class="text-center py-3 text-muted">
+                                    <i class="bi bi-folder-x display-4"></i>
+                                    <p class="mt-2">没有找到匹配的文件</p>
+                                </div>
+                                <ul v-else class="list-unstyled" v-html="renderFileTree(filteredItems)"></ul>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <!-- 选择类型切换 -->
+                            <div class="me-auto" v-if="allowDirectorySelection">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <input type="radio" class="btn-check" name="selectionType" id="selectFile" :checked="selectionType === 'file'" @change="handleSelectionTypeChange('file')">
+                                    <label class="btn btn-outline-primary" for="selectFile">选择文件</label>
+                                    <input type="radio" class="btn-check" name="selectionType" id="selectDirectory" :checked="selectionType === 'directory'" @change="handleSelectionTypeChange('directory')">
+                                    <label class="btn btn-outline-primary" for="selectDirectory">选择目录</label>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                            <button type="button" class="btn btn-primary" @click="confirmSelection" :disabled="!selectedFile">
+                                确认选择
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+</div>
+
+<script>
+const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+
+const app = createApp({
+    components: {
+        'file-tree': FileTreeComponent
+    },
+    setup() {
+                const databases = ref([]);
+                const selectedDatabase = ref('');
+                const personas = ref([]);
+                const selectedPersona = ref(null);
+                const loading = ref(false);
+                const error = ref(null);
+                const panelOpen = ref(false);
+                const personalitySummary = ref({});
+                const panelCharts = ref([]);
+                const chartObjects = reactive({});
+                const fileTreeRef = ref(null);
+
+                // 获取数据库显示名称
+                const getDbDisplayName = (path) => {
+                    const db = databases.value.find(db => db.path === path);
+                    return db ? db.name : path;
+                };
+
+                const loadDatabases = async () => {
+                    try {
+                        const response = await fetch('/api/databases');
+                        databases.value = await response.json();
+                    } catch (err) {
+                        error.value = '加载数据库列表失败: ' + err.message;
+                    }
+                };
+
+                // 打开文件树模态框
+                const openFileTree = () => {
+                    if (fileTreeRef.value) {
+                        fileTreeRef.value.open();
+                    }
+                };
+
+                // 文件选择回调
+                const onFileSelected = (file) => {
+                    if (file && file.path) {
+                        selectedDatabase.value = file.path;
+                        loadPersonas();
+                    }
+                };
+
+                const loadPersonas = async () => {
+                    if (!selectedDatabase.value) return;
+
+                    try {
+                        loading.value = true;
+                        error.value = null;
+                        selectedPersona.value = null;
+
+                        const response = await fetch(`/api/personas?db=${encodeURIComponent(selectedDatabase.value)}`);
+                        if (!response.ok) {
+                            throw new Error('获取角色列表失败');
+                        }
+
+                        personas.value = await response.json();
+                        destroyCharts();
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const selectPersona = (persona) => {
+                    selectedPersona.value = persona;
+                    nextTick(() => {
+                        renderCharts();
+                        if (selectedPersona.value && selectedPersona.value.personality_json) {
+                            try {
+                                const personalityData = JSON.parse(selectedPersona.value.personality_json);
+                                personalitySummary.value = calculatePersonalitySummary(personalityData);
+                                preparePanelChartData(personalityData);
+                                if (panelOpen.value) {
+                                    renderAllPanelCharts();
+                                }
+                            } catch (err) {
+                                console.error('Error updating panel data:', err);
+                            }
+                        }
+                    });
+                };
+
+                const renderCharts = () => {
+                    if (!selectedPersona.value || !selectedPersona.value.personality_json) return;
+
+                    destroyCharts();
+                    renderTraitCharts();
+                };
+
+                const renderTraitCharts = () => {
+                    try {
+                        const personalityData = JSON.parse(selectedPersona.value.personality_json);
+                        const personalities = personalityData.person.result.personalities;
+
+                        const traitNames = {
+                            extraversion: ['EXTRAVERSION', 'Friendliness', 'Gregariousness', 'Assertiveness', 'Activity Level', 'Excitement-Seeking', 'Cheerfulness'],
+                            agreeableness: ['AGREEABLENESS', 'Trust', 'Morality', 'Altruism', 'Cooperation', 'Modesty', 'Sympathy'],
+                            conscientiousness: ['CONSCIENTIOUSNESS', 'Self-Efficacy', 'Orderliness', 'Dutifulness', 'Achievement-Striving', 'Self-Discipline', 'Cautiousness'],
+                            neuroticism: ['NEUROTICISM', 'Anxiety', 'Anger', 'Depression', 'Self-Consciousness', 'Immoderation', 'Vulnerability'],
+                            openness: ['OPENNESS', 'Imagination', 'Artistic Interests', 'Emotionality', 'Adventurousness', 'Intellect', 'Liberalism']
+                        };
+
+                        const extractSubTraits = (traitIndex) => {
+                            const trait = personalities[traitIndex];
+                            const traitKey = Object.keys(trait)[0];
+                            const traitData = trait[traitKey];
+
+                            return {
+                                main: Math.round(traitData[traitKey.toUpperCase()]),
+                                subTraits: traitData.traits.map((subTrait, i) => ({
+                                    name: traitNames[traitKey][i + 1],
+                                    value: Math.round(Object.values(subTrait)[1])
+                                }))
+                            };
+                        };
+
+                        renderHorizontalBarChart('extraversionChart', '外向性', extractSubTraits(2), 'orange');
+                        renderHorizontalBarChart('agreeablenessChart', '宜人性', extractSubTraits(3), 'green');
+                        renderHorizontalBarChart('conscientiousnessChart', '尽责性', extractSubTraits(1), 'magenta');
+                        renderHorizontalBarChart('neuroticismChart', '神经质', extractSubTraits(4), 'red');
+                        renderHorizontalBarChart('opennessChart', '开放性', extractSubTraits(0), 'blue');
+
+                    } catch (err) {
+                        console.error('Error parsing personality data:', err);
+                    }
+                };
+
+                const renderHorizontalBarChart = (canvasId, title, traitData, color) => {
+                    const ctx = document.getElementById(canvasId);
+                    if (!ctx) return;
+
+                    const labels = ['Main', ...traitData.subTraits.map(t => t.name)];
+                    const data = [traitData.main, ...traitData.subTraits.map(t => t.value)];
+
+                    const chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: title,
+                                data: data,
+                                backgroundColor: color,
+                                borderColor: color,
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    title: {
+                                        display: true,
+                                        text: '分数'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: title,
+                                    font: {
+                                        size: 16,
+                                        weight: 'bold'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    chartObjects[canvasId] = chart;
+                };
+
+                const destroyCharts = () => {
+                    const chartIds = ['extraversionChart', 'agreeablenessChart', 'conscientiousnessChart', 'neuroticismChart', 'opennessChart'];
+                    chartIds.forEach(id => {
+                        if (chartObjects[id]) {
+                            chartObjects[id].destroy();
+                            delete chartObjects[id];
+                        }
+                    });
+                };
+
+                const getCurrentDbName = () => {
+                    const db = databases.value.find(db => db.path === selectedDatabase.value);
+                    return db ? db.name : '';
+                };
+
+                const togglePanel = () => {
+                    panelOpen.value = !panelOpen.value;
+                    if (panelOpen.value) {
+                        renderPanelCharts();
+                    }
+                };
+
+                const closePanel = () => {
+                    panelOpen.value = false;
+                };
+
+                const getTraitName = (traitKey) => {
+                    const traitNames = {
+                        'extraversion': '外向性',
+                        'agreeableness': '宜人性',
+                        'conscientiousness': '尽责性',
+                        'neuroticism': '神经质',
+                        'openness': '开放性'
+                    };
+                    return traitNames[traitKey] || traitKey;
+                };
+
+                const calculatePersonalitySummary = (personalityData) => {
+                    const personalities = personalityData.person.result.personalities;
+                    const summary = {};
+
+                    personalities.forEach((trait) => {
+                        const traitKey = Object.keys(trait)[0];
+                        const traitData = trait[traitKey];
+
+                        if (traitData.traits && traitData.traits.length > 0) {
+                            const totalScore = traitData.traits.reduce((sum, subTrait) => {
+                                const subTraitValue = Object.values(subTrait)[1];
+                                return sum + (Number(subTraitValue) || 0);
+                            }, 0);
+                            summary[traitKey] = totalScore / traitData.traits.length;
+                        } else {
+                            summary[traitKey] = 0;
+                        }
+                    });
+
+                    return summary;
+                };
+
+                const renderPanelCharts = () => {
+                    if (!selectedPersona.value || !selectedPersona.value.personality_json) return;
+
+                    try {
+                        const personalityData = JSON.parse(selectedPersona.value.personality_json);
+                        personalitySummary.value = calculatePersonalitySummary(personalityData);
+                        preparePanelChartData(personalityData);
+                        nextTick(() => {
+                            renderAllPanelCharts();
+                        });
+                    } catch (err) {
+                        console.error('Error preparing panel charts:', err);
+                    }
+                };
+
+                const preparePanelChartData = (personalityData) => {
+                    const personalities = personalityData.person.result.personalities;
+
+                    const traitNames = {
+                        extraversion: ['Friendliness', 'Gregariousness', 'Assertiveness', 'Activity Level', 'Excitement-Seeking', 'Cheerfulness'],
+                        agreeableness: ['Trust', 'Morality', 'Altruism', 'Cooperation', 'Modesty', 'Sympathy'],
+                        conscientiousness: ['Self-Efficacy', 'Orderliness', 'Dutifulness', 'Achievement-Striving', 'Self-Discipline', 'Cautiousness'],
+                        neuroticism: ['Anxiety', 'Anger', 'Depression', 'Self-Consciousness', 'Immoderation', 'Vulnerability'],
+                        openness: ['Imagination', 'Artistic Interests', 'Emotionality', 'Adventurousness', 'Intellect', 'Liberalism']
+                    };
+
+                    const colors = ['#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#1f77b4'];
+
+                    panelCharts.value = personalities.map((trait, index) => {
+                        const traitKey = Object.keys(trait)[0];
+                        const traitData = trait[traitKey];
+
+                        return {
+                            title: getTraitName(traitKey),
+                            data: traitData.traits.map((subTrait, i) => ({
+                                label: traitNames[traitKey][i],
+                                value: Math.round(Object.values(subTrait)[1])
+                            })),
+                            color: colors[index]
+                        };
+                    });
+                };
+
+                const renderAllPanelCharts = () => {
+                    destroyPanelCharts();
+
+                    panelCharts.value.forEach((chartData, index) => {
+                        renderPanelChart(index, chartData);
+                    });
+                };
+
+                const renderPanelChart = (index, chartData) => {
+                    const ctx = document.getElementById('panelChart' + index);
+                    if (!ctx) return;
+
+                    const chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: chartData.data.map(d => d.label),
+                            datasets: [{
+                                label: chartData.title,
+                                data: chartData.data.map(d => d.value),
+                                backgroundColor: chartData.color,
+                                borderColor: chartData.color,
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    title: {
+                                        display: true,
+                                        text: '分数'
+                                    }
+                                },
+                                x: {
+                                    ticks: {
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    }
+                                }
+                            },
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: chartData.title,
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
+                                legend: {
+                                    display: false
+                                }
+                            }
+                        }
+                    });
+
+                    chartObjects['panelChart' + index] = chart;
+                };
+
+                const destroyPanelCharts = () => {
+                    Object.keys(chartObjects).forEach(key => {
+                        if (key.startsWith('panelChart') && chartObjects[key]) {
+                            chartObjects[key].destroy();
+                            delete chartObjects[key];
+                        }
+                    });
+                };
+
+                onMounted(async () => {
+                    await loadDatabases();
+                });
+
+                return {
+                    databases,
+                    selectedDatabase,
+                    personas,
+                    selectedPersona,
+                    loading,
+                    error,
+                    panelOpen,
+                    personalitySummary,
+                    panelCharts,
+                    fileTreeRef,
+                    loadDatabases,
+                    loadPersonas,
+                    selectPersona,
+                    renderCharts,
+                    destroyCharts,
+                    getCurrentDbName,
+                    togglePanel,
+                    closePanel,
+                    getTraitName,
+                    renderPanelCharts,
+                    renderAllPanelCharts,
+                    openFileTree,
+                    onFileSelected,
+                    getDbDisplayName
+                };
+            }
+        });
+
+        app.mount('#app');
+</script>
+</body>
+</html>

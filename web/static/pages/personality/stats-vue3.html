@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>性格统计 - Agentic Society</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container-fluid">
+            <!-- Database Selection -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-database me-2"></i>选择数据源</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择数据库:</label>
+                        <select class="form-select" v-model="selectedDatabase" @change="loadStats">
+                            <option value="">请选择数据库...</option>
+                            <option v-for="db in databases" :value="db.path">{{ db.name }}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div v-if="selectedDatabase">
+                <!-- Header -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-graph-up me-2"></i>性格统计信息</h5>
+                    </div>
+                    <div class="card-body">
+                        <div v-if="loading" class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                        <div v-else-if="error" class="alert alert-danger">
+                            {{ error }}
+                        </div>
+                        <div v-else>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <canvas id="personalityChart" width="400" height="300"></canvas>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6><i class="bi bi-table me-2"></i>统计摘要</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>性格维度</th>
+                                                    <th>均值</th>
+                                                    <th>方差</th>
+                                                    <th>标准差</th>
+                                                    <th>样本数</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="trait in traits" :key="trait.key">
+                                                    <td>{{ trait.name }}</td>
+                                                    <td>{{ stats['avg_' + trait.key] ? stats['avg_' + trait.key].toFixed(4) : 'N/A' }}</td>
+                                                    <td>{{ stats['var_' + trait.key] ? stats['var_' + trait.key].toFixed(4) : 'N/A' }}</td>
+                                                    <td>{{ stats['std_' + trait.key] ? stats['std_' + trait.key].toFixed(4) : 'N/A' }}</td>
+                                                    <td>{{ stats.total_personas || 'N/A' }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6><i class="bi bi-info-circle me-2"></i>统计洞察</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <pre>{{ getStatsInsights() }}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+
+        const app = createApp({
+            setup() {
+                const databases = ref([]);
+                const selectedDatabase = ref('');
+                const stats = ref(null);
+                const loading = ref(false);
+                const error = ref(null);
+                const personalityChart = ref(null);
+                const traits = reactive([
+                    { name: '开放性', key: 'openness' },
+                    { name: '尽责性', key: 'conscientiousness' },
+                    { name: '外向性', key: 'extraversion' },
+                    { name: '宜人性', key: 'agreeableness' },
+                    { name: '神经质', key: 'neuroticism' }
+                ]);
+
+                const loadDatabases = async () => {
+                    try {
+                        const response = await fetch('/api/databases');
+                        databases.value = await response.json();
+                    } catch (err) {
+                        error.value = '加载数据库列表失败: ' + err.message;
+                    }
+                };
+
+                const loadStats = async () => {
+                    if (!selectedDatabase.value) return;
+
+                    try {
+                        loading.value = true;
+                        error.value = null;
+
+                        const response = await fetch(`/api/personality/stats?db=${encodeURIComponent(selectedDatabase.value)}`);
+                        if (!response.ok) {
+                            throw new Error('获取统计信息失败');
+                        }
+
+                        stats.value = await response.json();
+                        nextTick(() => {
+                            renderPersonalityChart();
+                        });
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const renderPersonalityChart = () => {
+                    if (!stats.value) return;
+
+                    const ctx = document.getElementById('personalityChart');
+                    if (!ctx) return;
+
+                    if (personalityChart.value) {
+                        personalityChart.value.destroy();
+                    }
+
+                    personalityChart.value = new Chart(ctx, {
+                        type: 'radar',
+                        data: {
+                            labels: ['开放性', '尽责性', '外向性', '宜人性', '神经质'],
+                            datasets: [{
+                                label: '平均性格特质',
+                                data: [
+                                    stats.value.avg_openness,
+                                    stats.value.avg_conscientiousness,
+                                    stats.value.avg_extraversion,
+                                    stats.value.avg_agreeableness,
+                                    stats.value.avg_neuroticism
+                                ],
+                                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 2,
+                                pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: 'rgba(54, 162, 235, 1)'
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                r: {
+                                    angleLines: { display: true },
+                                    suggestedMin: 0,
+                                    suggestedMax: 5
+                                }
+                            },
+                            plugins: { legend: { display: true } }
+                        }
+                    });
+                };
+
+                const getStatsInsights = () => {
+                    if (!stats.value) return '';
+
+                    let insights = '性格维度统计摘要：\n\n';
+
+                    traits.forEach(trait => {
+                        insights += `${trait.name}:\n`;
+                        insights += `  均值: ${stats.value['avg_' + trait.key]?.toFixed(4) || 'N/A'}\n`;
+                        insights += `  方差: ${stats.value['var_' + trait.key]?.toFixed(4) || 'N/A'}\n`;
+                        insights += `  标准差: ${stats.value['std_' + trait.key]?.toFixed(4) || 'N/A'}\n\n`;
+                    });
+
+                    const means = traits.map(trait => stats.value['avg_' + trait.key]).filter(val => val != null);
+                    if (means.length > 0) {
+                        const maxMean = Math.max(...means);
+                        const minMean = Math.min(...means);
+                        const maxTrait = traits[means.indexOf(maxMean)]?.name;
+                        const minTrait = traits[means.indexOf(minMean)]?.name;
+
+                        insights += '统计洞察：\n';
+                        insights += `• 平均分最高的维度: ${maxTrait} (${maxMean.toFixed(4)})\n`;
+                        insights += `• 平均分最低的维度: ${minTrait} (${minMean.toFixed(4)})\n`;
+                        insights += `• 总样本数: ${stats.value.total_personas || 'N/A'}\n`;
+                    }
+
+                    return insights;
+                };
+
+                onMounted(async () => {
+                    await loadDatabases();
+                });
+
+                return {
+                    databases,
+                    selectedDatabase,
+                    stats,
+                    loading,
+                    error,
+                    personalityChart,
+                    traits,
+                    loadDatabases,
+                    loadStats,
+                    renderPersonalityChart,
+                    getStatsInsights
+                };
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+</html>

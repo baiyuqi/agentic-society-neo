@@ -23,10 +23,10 @@ class IdentifiabilityPanel:
         control_frame = ttk.Frame(self.main)
         control_frame.pack(fill=tk.X, padx=10, pady=10)
         
-        title_label = ttk.Label(control_frame, text="可识别性分析：比较标准样本与贫乏样本", font=("Helvetica", 14, "bold"))
+        title_label = ttk.Label(control_frame, text="Identifiability Analysis: Comparing Standard Samples vs Poor Samples", font=("Helvetica", 14, "bold"))
         title_label.pack(side=tk.LEFT, padx=(0, 20))
 
-        self.run_button = ttk.Button(control_frame, text="运行分析", command=self.start_analysis)
+        self.run_button = ttk.Button(control_frame, text="Run Analysis", command=self.start_analysis)
         self.run_button.pack(side=tk.LEFT, padx=(0, 10))
 
         self.save_button = ttk.Button(control_frame, text="Save to SVG", command=self.save_to_svg, state=tk.DISABLED)
@@ -40,10 +40,10 @@ class IdentifiabilityPanel:
         ari_frame = ttk.Frame(self.plot_frame)
         ari_frame.pack(fill=tk.X, pady=(0, 10))
 
-        self.ari_label_samples = ttk.Label(ari_frame, text="标准样本 ARI: -", font=("Helvetica", 10, "bold"))
+        self.ari_label_samples = ttk.Label(ari_frame, text="Standard Samples ARI: -", font=("Helvetica", 10, "bold"))
         self.ari_label_samples.pack(side=tk.LEFT, padx=(0, 20))
 
-        self.ari_label_poor = ttk.Label(ari_frame, text="贫乏样本 ARI: -", font=("Helvetica", 10, "bold"))
+        self.ari_label_poor = ttk.Label(ari_frame, text="Poor Samples ARI: -", font=("Helvetica", 10, "bold"))
         self.ari_label_poor.pack(side=tk.LEFT)
 
         # Single figure with subplots and proper aspect ratio
@@ -63,19 +63,19 @@ class IdentifiabilityPanel:
         dir_poor = "data/db/backup/poor300"
 
         if not os.path.isdir(dir_samples) or not os.path.isdir(dir_poor):
-            messagebox.showerror("错误", "找不到所需的数据目录 'samples300' 或 'poor300'。")
+            messagebox.showerror("Error", "Required data directories 'samples300' or 'poor300' not found.")
             return
 
         # --- Analysis Task Definition ---
         def analysis_task(progress_dialog):
             results = {}
             # Analyze Standard Samples
-            progress_dialog.update_message("正在分析标准样本 (samples300)...")
+            progress_dialog.update_message("Analyzing Standard Samples (samples300)...")
             results['samples'] = self._run_single_analysis(dir_samples)
             if progress_dialog.is_cancelled(): return None
-            
+
             # Analyze Poor Samples
-            progress_dialog.update_message("正在分析贫乏样本 (poor300)...")
+            progress_dialog.update_message("Analyzing Poor Samples (poor300)...")
             results['poor'] = self._run_single_analysis(dir_poor)
             if progress_dialog.is_cancelled(): return None
 
@@ -86,25 +86,25 @@ class IdentifiabilityPanel:
             if results:
                 if results.get('samples'):
                     self.display_results(
-                        results['samples'], self.ax_samples, 
-                        self.ari_label_samples, "标准样本 (Samples 300)"
+                        results['samples'], self.ax_samples,
+                        self.ari_label_samples, "Standard Samples (Samples 300)"
                     )
                 if results.get('poor'):
                     self.display_results(
-                        results['poor'], self.ax_poor, 
-                        self.ari_label_poor, "贫乏样本 (Poor 300)"
+                        results['poor'], self.ax_poor,
+                        self.ari_label_poor, "Poor Samples (Poor 300)"
                     )
                 # Enable save button and redraw canvas
                 self.save_button.config(state=tk.NORMAL)
                 self.canvas.draw()
 
         def on_error(error):
-            messagebox.showerror("分析错误", f"发生错误: {error}")
+            messagebox.showerror("Analysis Error", f"An error occurred: {error}")
 
         self.progress_manager.run_with_progress(
             analysis_task,
-            title="可识别性分析",
-            message="正在准备...",
+            title="Identifiability Analysis",
+            message="Preparing...",
             success_callback=on_success,
             error_callback=on_error
         )
@@ -113,7 +113,7 @@ class IdentifiabilityPanel:
         """Runs the clustering analysis for a single directory."""
         profile_dataframes, profile_names = load_profiles_from_directory(directory)
         if not profile_dataframes:
-            raise ValueError(f"在目录 {directory} 中没有找到有效的数据库文件。")
+            raise ValueError(f"No valid database files found in directory {directory}.")
             
         scaled_vectors, true_labels = get_combined_and_scaled_data(profile_dataframes)
         num_profiles = len(profile_dataframes)
@@ -172,7 +172,7 @@ class IdentifiabilityPanel:
             defaultextension=".svg",
             filetypes=[("SVG Files", "*.svg"), ("All Files", "*.*")]
         )
-        
+
         if file_path:
             self.fig.savefig(file_path, format="svg", bbox_inches="tight")
             messagebox.showinfo("Success", f"Combined plot saved successfully to:\n{file_path}")
