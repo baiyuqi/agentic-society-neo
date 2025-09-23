@@ -53,13 +53,14 @@
             top: 0;
             right: -400px;
             width: 400px;
-            height: 100vh;
+            height: auto;
+            max-height: 100vh;
             background: white;
             box-shadow: -2px 0 10px rgba(0,0,0,0.1);
             transition: right 0.3s ease;
             z-index: 1000;
             overflow-y: auto;
-            padding: 20px;
+            padding: 15px;
         }
 
         .sliding-panel.open {
@@ -89,9 +90,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
         }
 
         .panel-close {
@@ -109,6 +110,64 @@
         .chart-container-panel {
             height: 200px;
             margin-bottom: 15px;
+        }
+
+        /* Compact personality summary */
+        .personality-summary-compact {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .trait-score-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 5px;
+            min-width: 60px;
+        }
+
+        .trait-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 2px;
+        }
+
+        .trait-value {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #667eea;
+            background: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+
+        /* Grid charts layout - 1 column, 5 rows */
+        .charts-grid-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(5, auto);
+            gap: 8px;
+            max-height: 500px;
+            overflow: hidden;
+        }
+
+        .chart-grid-item {
+            height: 80px;
+            position: relative;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* 左对齐 */
+        }
+
+        .chart-grid-item canvas {
+            width: 100% !important;
+            height: 100% !important;
+            margin-left: 0 !important; /* 确保左对齐 */
         }
 
         .personality-details {
@@ -236,47 +295,6 @@
                                 <p class="mt-3">没有找到角色数据</p>
                             </div>
 
-                            <!-- Personality Charts -->
-                            <div v-if="selectedPersona" class="mt-4">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6><i class="bi bi-graph-up me-2"></i>ID {{ selectedPersona.id }} 的详细性格特质分析</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="chart-container">
-                                                    <canvas id="extraversionChart"></canvas>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="chart-container">
-                                                    <canvas id="agreeablenessChart"></canvas>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="row mt-4">
-                                            <div class="col-md-6">
-                                                <div class="chart-container">
-                                                    <canvas id="conscientiousnessChart"></canvas>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="chart-container">
-                                                    <canvas id="neuroticismChart"></canvas>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="row mt-4">
-                                            <div class="col-md-6">
-                                                <div class="chart-container">
-                                                    <canvas id="opennessChart"></canvas>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -290,24 +308,33 @@
 
         <div class="sliding-panel" :class="{open: panelOpen}" v-if="selectedPersona">
             <div class="panel-header">
-                <h5><i class="bi bi-graph-up me-2"></i>性格曲线分析</h5>
-                <button class="panel-close" @click="closePanel">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>
-
-            <!-- Personality Summary -->
-            <div class="personality-details">
-                <h6>性格维度得分</h6>
-                <div class="detail-item" v-for="(score, trait) in personalitySummary" :key="trait">
-                    <span class="detail-label">{{ getTraitName(trait) }}</span>
-                    <span class="detail-value">{{ score.toFixed(2) }}</span>
+                <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>性格分析</h6>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary me-2" @click="forceRedrawPanelCharts" title="重绘图表">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <button class="panel-close" @click="closePanel">
+                        <i class="bi bi-x"></i>
+                    </button>
                 </div>
             </div>
 
-            <!-- Individual Trait Charts -->
-            <div v-for="(chart, index) in panelCharts" :key="index" class="chart-container-panel">
-                <canvas :id="'panelChart' + index"></canvas>
+            <!-- Personality Summary -->
+            <div class="personality-summary-compact">
+                <h6 class="mb-2">性格维度得分</h6>
+                <div class="d-flex justify-content-between flex-wrap">
+                    <div v-for="(score, trait) in personalitySummary" :key="trait" class="trait-score-item">
+                        <span class="trait-label">{{ getTraitName(trait) }}</span>
+                        <span class="trait-value">{{ score.toFixed(1) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Individual Trait Charts - Grid Layout -->
+            <div class="charts-grid-container">
+                <div v-for="(chart, index) in panelCharts" :key="index" class="chart-grid-item">
+                    <canvas :id="'panelChart' + index"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -440,7 +467,6 @@ const app = createApp({
                         }
 
                         personas.value = await response.json();
-                        destroyCharts();
                     } catch (err) {
                         error.value = err.message;
                     } finally {
@@ -450,125 +476,37 @@ const app = createApp({
 
                 const selectPersona = (persona) => {
                     selectedPersona.value = persona;
-                    nextTick(() => {
-                        renderCharts();
+
+                    // 自动打开推拉窗口
+                    if (!panelOpen.value) {
+                        panelOpen.value = true;
+                    }
+
+                    // 添加延迟确保DOM完全更新
+                    setTimeout(() => {
                         if (selectedPersona.value && selectedPersona.value.personality_json) {
                             try {
                                 const personalityData = JSON.parse(selectedPersona.value.personality_json);
                                 personalitySummary.value = calculatePersonalitySummary(personalityData);
                                 preparePanelChartData(personalityData);
-                                if (panelOpen.value) {
+
+                                // 延迟渲染确保推拉窗口完全打开
+                                setTimeout(() => {
                                     renderAllPanelCharts();
-                                }
+                                }, 150);
                             } catch (err) {
                                 console.error('Error updating panel data:', err);
                             }
                         }
-                    });
+                    }, 50);
                 };
 
                 const renderCharts = () => {
-                    if (!selectedPersona.value || !selectedPersona.value.personality_json) return;
-
-                    destroyCharts();
-                    renderTraitCharts();
-                };
-
-                const renderTraitCharts = () => {
-                    try {
-                        const personalityData = JSON.parse(selectedPersona.value.personality_json);
-                        const personalities = personalityData.person.result.personalities;
-
-                        const traitNames = {
-                            extraversion: ['EXTRAVERSION', 'Friendliness', 'Gregariousness', 'Assertiveness', 'Activity Level', 'Excitement-Seeking', 'Cheerfulness'],
-                            agreeableness: ['AGREEABLENESS', 'Trust', 'Morality', 'Altruism', 'Cooperation', 'Modesty', 'Sympathy'],
-                            conscientiousness: ['CONSCIENTIOUSNESS', 'Self-Efficacy', 'Orderliness', 'Dutifulness', 'Achievement-Striving', 'Self-Discipline', 'Cautiousness'],
-                            neuroticism: ['NEUROTICISM', 'Anxiety', 'Anger', 'Depression', 'Self-Consciousness', 'Immoderation', 'Vulnerability'],
-                            openness: ['OPENNESS', 'Imagination', 'Artistic Interests', 'Emotionality', 'Adventurousness', 'Intellect', 'Liberalism']
-                        };
-
-                        const extractSubTraits = (traitIndex) => {
-                            const trait = personalities[traitIndex];
-                            const traitKey = Object.keys(trait)[0];
-                            const traitData = trait[traitKey];
-
-                            return {
-                                main: Math.round(traitData[traitKey.toUpperCase()]),
-                                subTraits: traitData.traits.map((subTrait, i) => ({
-                                    name: traitNames[traitKey][i + 1],
-                                    value: Math.round(Object.values(subTrait)[1])
-                                }))
-                            };
-                        };
-
-                        renderHorizontalBarChart('extraversionChart', '外向性', extractSubTraits(2), 'orange');
-                        renderHorizontalBarChart('agreeablenessChart', '宜人性', extractSubTraits(3), 'green');
-                        renderHorizontalBarChart('conscientiousnessChart', '尽责性', extractSubTraits(1), 'magenta');
-                        renderHorizontalBarChart('neuroticismChart', '神经质', extractSubTraits(4), 'red');
-                        renderHorizontalBarChart('opennessChart', '开放性', extractSubTraits(0), 'blue');
-
-                    } catch (err) {
-                        console.error('Error parsing personality data:', err);
-                    }
-                };
-
-                const renderHorizontalBarChart = (canvasId, title, traitData, color) => {
-                    const ctx = document.getElementById(canvasId);
-                    if (!ctx) return;
-
-                    const labels = ['Main', ...traitData.subTraits.map(t => t.name)];
-                    const data = [traitData.main, ...traitData.subTraits.map(t => t.value)];
-
-                    const chart = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: title,
-                                data: data,
-                                backgroundColor: color,
-                                borderColor: color,
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                x: {
-                                    beginAtZero: true,
-                                    max: 100,
-                                    title: {
-                                        display: true,
-                                        text: '分数'
-                                    }
-                                }
-                            },
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: title,
-                                    font: {
-                                        size: 16,
-                                        weight: 'bold'
-                                    }
-                                }
-                            }
-                        }
-                    });
-
-                    chartObjects[canvasId] = chart;
+                    // 底部图表已移除，此函数不再需要
                 };
 
                 const destroyCharts = () => {
-                    const chartIds = ['extraversionChart', 'agreeablenessChart', 'conscientiousnessChart', 'neuroticismChart', 'opennessChart'];
-                    chartIds.forEach(id => {
-                        if (chartObjects[id]) {
-                            chartObjects[id].destroy();
-                            delete chartObjects[id];
-                        }
-                    });
+                    // 底部图表已移除，此函数不再需要
                 };
 
                 const getCurrentDbName = () => {
@@ -579,12 +517,22 @@ const app = createApp({
                 const togglePanel = () => {
                     panelOpen.value = !panelOpen.value;
                     if (panelOpen.value) {
-                        renderPanelCharts();
+                        // 延迟渲染确保推拉窗口完全打开
+                        setTimeout(() => {
+                            renderPanelCharts();
+                        }, 150);
                     }
                 };
 
                 const closePanel = () => {
                     panelOpen.value = false;
+                };
+
+                // 强制重绘所有面板图表
+                const forceRedrawPanelCharts = () => {
+                    if (panelOpen.value && selectedPersona.value) {
+                        renderAllPanelCharts();
+                    }
                 };
 
                 const getTraitName = (traitKey) => {
@@ -627,9 +575,11 @@ const app = createApp({
                         const personalityData = JSON.parse(selectedPersona.value.personality_json);
                         personalitySummary.value = calculatePersonalitySummary(personalityData);
                         preparePanelChartData(personalityData);
-                        nextTick(() => {
+
+                        // 延迟渲染确保数据准备完成
+                        setTimeout(() => {
                             renderAllPanelCharts();
-                        });
+                        }, 50);
                     } catch (err) {
                         console.error('Error preparing panel charts:', err);
                     }
@@ -666,63 +616,129 @@ const app = createApp({
                 const renderAllPanelCharts = () => {
                     destroyPanelCharts();
 
+                    // 延迟渲染每个图表，避免同时创建导致的资源竞争
                     panelCharts.value.forEach((chartData, index) => {
-                        renderPanelChart(index, chartData);
+                        setTimeout(() => {
+                            renderPanelChart(index, chartData);
+                        }, index * 50); // 间隔50ms创建每个图表
                     });
                 };
 
-                const renderPanelChart = (index, chartData) => {
-                    const ctx = document.getElementById('panelChart' + index);
-                    if (!ctx) return;
+                const renderPanelChart = (index, chartData, retryCount = 0) => {
+                    const canvasId = 'panelChart' + index;
+                    const ctx = document.getElementById(canvasId);
 
-                    const chart = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: chartData.data.map(d => d.label),
-                            datasets: [{
-                                label: chartData.title,
-                                data: chartData.data.map(d => d.value),
-                                backgroundColor: chartData.color,
-                                borderColor: chartData.color,
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    max: 100,
+                    if (!ctx) {
+                        console.log('Canvas not found for', canvasId);
+                        if (retryCount < 5) {
+                            setTimeout(() => renderPanelChart(index, chartData, retryCount + 1), 100);
+                        }
+                        return;
+                    }
+
+                    try {
+                        // 先销毁已存在的图表
+                        if (chartObjects[canvasId]) {
+                            chartObjects[canvasId].destroy();
+                            delete chartObjects[canvasId];
+                        }
+
+                        // 确保canvas有正确的尺寸
+                        const container = ctx.parentElement;
+                        if (container && container.offsetWidth > 0 && container.offsetHeight > 0) {
+                            ctx.width = container.offsetWidth;
+                            ctx.height = container.offsetHeight;
+                        }
+
+                        // 优化的横向柱状图配置
+                        const chart = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: chartData.data.map(d => d.label),
+                                datasets: [{
+                                    label: chartData.title,
+                                    data: chartData.data.map(d => d.value),
+                                    backgroundColor: chartData.color,
+                                    borderColor: chartData.color,
+                                    borderWidth: 1,
+                                    barPercentage: 0.9, // 增大柱状图宽度
+                                    categoryPercentage: 0.9 // 减小类别间距，缝隙约为柱宽度的1/10
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y', // 横向柱状图
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                animation: {
+                                    duration: 0 // 禁用动画避免初始化问题
+                                },
+                                scales: {
+                                    x: {
+                                        beginAtZero: true,
+                                        min: 0,
+                                        max: 100,
+                                        display: true, // 显示X轴
+                                        grid: {
+                                            display: true,
+                                            color: 'rgba(0,0,0,0.1)'
+                                        },
+                                        ticks: {
+                                            font: {
+                                                size: 9
+                                            },
+                                            stepSize: 20
+                                        }
+                                    },
+                                    y: {
+                                        ticks: {
+                                            font: {
+                                                size: 8 // 减小字体适应单列布局
+                                            },
+                                            maxRotation: 0,
+                                            align: 'start', // 左对齐
+                                            padding: 5
+                                        },
+                                        grid: {
+                                            display: false
+                                        },
+                                        afterFit: function(scale) {
+                                            scale.width = 80; // 减小Y轴宽度，让图表更靠左
+                                        }
+                                    }
+                                },
+                                plugins: {
                                     title: {
                                         display: true,
-                                        text: '分数'
+                                        text: chartData.title,
+                                        font: {
+                                            size: 10,
+                                            weight: 'bold'
+                                        },
+                                        padding: 3
+                                    },
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        enabled: true,
+                                        callbacks: {
+                                            label: function(context) {
+                                                return `${context.dataset.label}: ${context.parsed.x}`;
+                                            }
+                                        }
                                     }
-                                },
-                                x: {
-                                    ticks: {
-                                        maxRotation: 45,
-                                        minRotation: 45
-                                    }
-                                }
-                            },
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: chartData.title,
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
-                                },
-                                legend: {
-                                    display: false
                                 }
                             }
-                        }
-                    });
+                        });
 
-                    chartObjects['panelChart' + index] = chart;
+                        chartObjects[canvasId] = chart;
+                        console.log('Panel chart created successfully:', canvasId);
+                    } catch (err) {
+                        console.error('Error creating panel chart:', canvasId, err);
+                        if (retryCount < 3) {
+                            setTimeout(() => renderPanelChart(index, chartData, retryCount + 1), 200);
+                        }
+                    }
                 };
 
                 const destroyPanelCharts = () => {
@@ -752,14 +768,13 @@ const app = createApp({
                     loadDatabases,
                     loadPersonas,
                     selectPersona,
-                    renderCharts,
-                    destroyCharts,
                     getCurrentDbName,
                     togglePanel,
                     closePanel,
                     getTraitName,
                     renderPanelCharts,
                     renderAllPanelCharts,
+                    forceRedrawPanelCharts,
                     openFileTree,
                     onFileSelected,
                     getDbDisplayName
