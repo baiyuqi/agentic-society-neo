@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聚类方法可识别性分析 - Agentic Society</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+        }
+        .chart-container {
+            position: relative;
+            min-height: 400px;
+            margin-bottom: 20px;
+        }
+        .control-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .ari-badge {
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+        .ari-good {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .ari-poor {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .ari-medium {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container-fluid">
+            <!-- Header -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-scatter-chart me-2"></i>聚类方法可识别性分析</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Control Panel -->
+                    <div class="control-panel">
+                        <!-- Analysis Info -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <h6><i class="bi bi-info-circle me-2"></i>专题分析说明</h6>
+                                    <p class="mb-0">
+                                        本分析使用预设数据源对比标准样本(samples300)和低质量样本(poor300)的聚类效果，
+                                        使用调整兰德指数(ARI)评估聚类方法的可识别性。
+                                        ARI越高表示聚类效果越好，可识别性越强。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Analysis Controls -->
+                        <div class="row mt-3">
+                            <div class="col-md-8">
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-primary" @click="runAnalysis" :disabled="loading">
+                                        <i class="bi bi-play-circle me-1"></i>运行分析
+                                    </button>
+                                    <button class="btn btn-outline-success" @click="forceRedrawChart" :disabled="!analysisComplete">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>重绘图表
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">分析状态:</label>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge" :class="analysisStatus.class">
+                                        {{ analysisStatus.text }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="loading" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2">正在分析聚类方法可识别性...</p>
+                    </div>
+
+                    <div v-else-if="error" class="alert alert-danger">
+                        {{ error }}
+                    </div>
+
+                    <!-- Analysis Results -->
+                    <div v-if="analysisComplete" class="results-section">
+                        <!-- ARI Comparison -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="bi bi-bar-chart-line me-2"></i>调整兰德指数(ARI)对比</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 text-center">
+                                        <h6>标准样本 (samples300)</h6>
+                                        <div class="ari-badge" :class="getAriClass(results.samples.ari_score)">
+                                            ARI: {{ results.samples.ari_score.toFixed(4) }}
+                                        </div>
+                                        <p class="text-muted mt-2">样本数: {{ results.samples.num_samples }}</p>
+                                    </div>
+                                    <div class="col-md-6 text-center">
+                                        <h6>低质量样本 (poor300)</h6>
+                                        <div class="ari-badge" :class="getAriClass(results.poor.ari_score)">
+                                            ARI: {{ results.poor.ari_score.toFixed(4) }}
+                                        </div>
+                                        <p class="text-muted mt-2">样本数: {{ results.poor.num_samples }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dual Chart Visualization -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="bi bi-scatter-chart me-2"></i>PCA聚类可视化</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="chart-container">
+                                            <canvas id="samplesChart"></canvas>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="chart-container">
+                                            <canvas id="poorChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Analysis Summary -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="bi bi-info-circle me-2"></i>分析说明</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>数据源说明:</h6>
+                                        <ul class="list-group">
+                                            <li class="list-group-item">
+                                                <span class="badge bg-primary me-2">Standard Samples</span>
+                                                标准样本数据源 (samples300)
+                                            </li>
+                                            <li class="list-group-item">
+                                                <span class="badge bg-danger me-2">Poor Samples</span>
+                                                低质量样本数据源 (poor300)
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>统计指标解释:</h6>
+                                        <p class="text-muted">
+                                            <strong>调整兰德指数(ARI):</strong> 衡量聚类结果与真实标签的一致性。
+                                            ARI = 1表示完美匹配，ARI = 0表示随机匹配。<br>
+                                            <strong>PCA:</strong> 主成分分析，用于高维数据降维可视化。<br>
+                                            <strong>聚类可识别性:</strong> 通过对比不同数据源的ARI，评估聚类方法的稳定性。
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="text-center text-muted mt-5">
+                        <i class="bi bi-scatter-chart display-4"></i>
+                        <p class="mt-3">点击"运行分析"开始聚类方法可识别性分析</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted } = Vue;
+
+        const app = createApp({
+            setup() {
+                const loading = ref(false);
+                const error = ref(null);
+                const analysisComplete = ref(false);
+                const results = ref({
+                    samples: null,
+                    poor: null
+                });
+                const chartObjectSamples = ref(null);
+                const chartObjectPoor = ref(null);
+
+                // 分析状态计算属性
+                const analysisStatus = computed(() => {
+                    if (loading.value) {
+                        return { text: '分析中...', class: 'bg-warning' };
+                    } else if (analysisComplete.value) {
+                        return { text: '分析完成', class: 'bg-success' };
+                    } else {
+                        return { text: '准备分析', class: 'bg-info' };
+                    }
+                });
+
+                const runAnalysis = async () => {
+                    try {
+                        loading.value = true;
+                        error.value = null;
+                        analysisComplete.value = false;
+                        destroyCharts();
+
+                        // 确保ChartJS库已加载
+                        if (typeof Chart === 'undefined') {
+                            throw new Error('ChartJS库未正确加载，请刷新页面重试');
+                        }
+
+                        // 同时分析两个目录
+                        const [samplesResult, poorResult] = await Promise.all([
+                            analyzeDirectory('samples300'),
+                            analyzeDirectory('poor300')
+                        ]);
+
+                        results.value = {
+                            samples: samplesResult,
+                            poor: poorResult
+                        };
+
+                        // 等待一小段时间确保DOM完全渲染
+                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        // 渲染图表
+                        renderCharts();
+                        analysisComplete.value = true;
+
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const analyzeDirectory = async (directory) => {
+                    const response = await fetch('/api/analysis/clustering', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            directory_path: directory
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `${directory}分析失败`);
+                    }
+
+                    return await response.json();
+                };
+
+                const renderCharts = () => {
+                    destroyCharts();
+
+                    // 渲染标准样本图表
+                    renderSingleChart('samplesChart', results.value.samples, '标准样本 (samples300)', chartObjectSamples);
+                    // 渲染低质量样本图表
+                    renderSingleChart('poorChart', results.value.poor, '低质量样本 (poor300)', chartObjectPoor);
+                };
+
+                const renderSingleChart = (canvasId, result, title, chartObject) => {
+                    const createChartWithRetry = (retryCount = 0) => {
+                        const ctx = document.getElementById(canvasId);
+                        if (!ctx) {
+                            console.log('Canvas element not found, retrying...');
+                            if (retryCount < 3) {
+                                setTimeout(() => createChartWithRetry(retryCount + 1), 100);
+                            }
+                            return;
+                        }
+
+                        try {
+                            // 准备PCA数据
+                            const pcaData = result.principal_components;
+                            const predictedLabels = result.predicted_labels;
+                            const trueLabels = result.true_labels;
+                            const profileNames = result.profile_names;
+
+                            // 创建数据集
+                            const datasets = [];
+                            const uniqueClusters = [...new Set(predictedLabels)];
+                            const colors = ['#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf', '#1f77b4'];
+
+                            uniqueClusters.forEach((clusterId, index) => {
+                                const clusterData = pcaData.filter((_, i) => predictedLabels[i] === clusterId);
+                                const clusterTrueLabels = trueLabels.filter((_, i) => predictedLabels[i] === clusterId);
+                                const uniqueTrueLabels = [...new Set(clusterTrueLabels)];
+
+                                datasets.push({
+                                    label: `Cluster ${clusterId + 1}`,
+                                    data: clusterData.map(point => ({
+                                        x: point[0],
+                                        y: point[1]
+                                    })),
+                                    backgroundColor: colors[index % colors.length],
+                                    borderColor: colors[index % colors.length],
+                                    borderWidth: 1,
+                                    pointRadius: 6,
+                                    pointHoverRadius: 8
+                                });
+                            });
+
+                            // 确保canvas有正确的尺寸
+                            const container = ctx.parentElement;
+                            if (container && container.offsetWidth > 0 && container.offsetHeight > 0) {
+                                ctx.width = container.offsetWidth;
+                                ctx.height = container.offsetHeight;
+                            }
+
+                            const chart = new Chart(ctx, {
+                                type: 'scatter',
+                                data: {
+                                    datasets: datasets
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    animation: {
+                                        duration: 0
+                                    },
+                                    plugins: {
+                                        title: {
+                                            display: true,
+                                            text: title,
+                                            font: {
+                                                size: 14,
+                                                weight: 'bold'
+                                            }
+                                        },
+                                        legend: {
+                                            display: true,
+                                            position: 'top'
+                                        }
+                                    },
+                                    scales: {
+                                        x: {
+                                            type: 'linear',
+                                            title: {
+                                                display: true,
+                                                text: `PC 1 (${(result.explained_variance[0] * 100).toFixed(1)}% variance)`
+                                            }
+                                        },
+                                        y: {
+                                            title: {
+                                                display: true,
+                                                text: `PC 2 (${(result.explained_variance[1] * 100).toFixed(1)}% variance)`
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+
+                            chartObject.value = chart;
+                            console.log(`Chart ${canvasId} created successfully`);
+                        } catch (err) {
+                            console.error('Error creating chart:', err);
+                            if (retryCount < 3) {
+                                setTimeout(() => createChartWithRetry(retryCount + 1), 200);
+                            } else {
+                                error.value = '图表创建失败: ' + err.message;
+                            }
+                        }
+                    };
+
+                    // 延迟创建图表，确保DOM完全加载
+                    setTimeout(() => {
+                        createChartWithRetry();
+                    }, 100);
+                };
+
+                const destroyCharts = () => {
+                    [chartObjectSamples, chartObjectPoor].forEach(chartObj => {
+                        if (chartObj.value) {
+                            try {
+                                chartObj.value.destroy();
+                            } catch (err) {
+                                console.warn('Error destroying chart:', err);
+                            }
+                            chartObj.value = null;
+                        }
+                    });
+                };
+
+                const forceRedrawChart = () => {
+                    if (analysisComplete.value) {
+                        renderCharts();
+                    }
+                };
+
+                const getAriClass = (ariScore) => {
+                    if (ariScore >= 0.7) return 'ari-good';
+                    if (ariScore >= 0.4) return 'ari-medium';
+                    return 'ari-poor';
+                };
+
+                onMounted(() => {
+                    // 初始化代码
+                });
+
+                return {
+                    loading,
+                    error,
+                    analysisComplete,
+                    results,
+                    analysisStatus,
+                    runAnalysis,
+                    forceRedrawChart,
+                    getAriClass
+                };
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+</html>

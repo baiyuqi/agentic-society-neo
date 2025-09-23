@@ -402,9 +402,12 @@
                                             data: x.map((xVal, i) => ({x: xVal, y: y[i]})),
                                             borderColor: result.color || colors[sourceName] || '#000000',
                                             backgroundColor: result.color || colors[sourceName] || '#000000',
-                                            borderWidth: 2,
+                                            borderWidth: 1.5,
                                             fill: false,
-                                            tension: 0.4
+                                            tension: 0.6,
+                                            pointRadius: 0,
+                                            pointHoverRadius: 0,
+                                            pointBorderWidth: 0
                                         });
                                     }
                                 }

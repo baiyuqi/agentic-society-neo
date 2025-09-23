@@ -22,7 +22,12 @@
       "Bash(sqlite3:*)",
       "Bash(poetry shell)",
       "Bash(pip install:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(poetry run:*)",
+      "Bash(fi:*)",
+      "Bash(done)",
+      "Bash(ls:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

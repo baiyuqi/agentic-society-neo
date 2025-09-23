@@ -113,18 +113,18 @@ const app = createApp({
             if (!viewType) return '';
 
             const pageMap = {
-                'personality-browse': '/pages/personality/browse-vue3.html',
+                'personality-browse': '/pages/working_db/browse-vue3.html',
                 'personality-stats': '/pages/personality/stats-vue3.html',
                 'personas': '/pages/personas/list-vue3.html',
-                'personality-analysis': '/pages/analysis/personality-vue3.html',
-                'mahalanobis': '/pages/analysis/mahalanobis-vue3.html',
-                'clustering': '/pages/analysis/clustering-vue3.html',
-                'identifiability': '/pages/analysis/identifiability.html',
-                'multi_mahalanobis': '/pages/analysis/multi_mahalanobis.html',
-                'curve_comparison': '/pages/analysis/curve_comparison.html',
-                'raw_comparison': '/pages/analysis/raw_comparison.html',
-                'antialign_comparison': '/pages/analysis/antialign_comparison.html',
-                'narrative_comparison': '/pages/analysis/narrative_comparison.html'
+                'personality-analysis': '/pages/data_analysis/personality-vue3.html',
+                'mahalanobis': '/pages/data_analysis/mahalanobis-vue3.html',
+                'clustering': '/pages/data_analysis/clustering-vue3.html',
+                'identifiability': '/pages/special_analysis/identifiability.html',
+                'multi_mahalanobis': '/pages/special_analysis/multi_mahalanobis.html',
+                'curve_comparison': '/pages/progressive_curves/curve_comparison.html',
+                'raw_comparison': '/pages/progressive_curves/raw_comparison.html',
+                'antialign_comparison': '/pages/progressive_curves/antialign_comparison.html',
+                'narrative_comparison': '/pages/progressive_curves/narrative_comparison.html'
             };
 
             const pageUrl = pageMap[viewType] || '/pages/placeholder.html';
