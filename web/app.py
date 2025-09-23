@@ -686,4 +686,7 @@ def serve_page(page_path):
     return app.send_static_file(f'pages/{page_path}')
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # 生产环境配置
+    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
