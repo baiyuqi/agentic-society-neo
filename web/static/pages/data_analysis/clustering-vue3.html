@@ -443,11 +443,13 @@
                                 datasets.push({
                                     label: `Cluster ${cluster + 1}`,
                                     data: clusterPc1.map((x, i) => ({x, y: clusterPc2[i]})),
-                                    backgroundColor: colors[index % colors.length],
-                                    borderColor: colors[index % colors.length],
+                                    backgroundColor: colors[index % colors.length] + 'CC', // 添加透明度
+                                    borderColor: '#ffffff', // 白色边界
+                                    borderWidth: 1.5, // 边界宽度
                                     pointStyle: 'circle',
                                     pointRadius: 6,
-                                    pointHoverRadius: 8
+                                    pointHoverRadius: 8,
+                                    pointHoverBorderWidth: 2 // 悬停时边界加粗
                                 });
                             });
 

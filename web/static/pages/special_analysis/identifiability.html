@@ -335,11 +335,12 @@
                                         x: point[0],
                                         y: point[1]
                                     })),
-                                    backgroundColor: colors[index % colors.length],
-                                    borderColor: colors[index % colors.length],
-                                    borderWidth: 1,
+                                    backgroundColor: colors[index % colors.length] + 'CC', // 添加透明度
+                                    borderColor: '#ffffff', // 白色边界
+                                    borderWidth: 1.5, // 边界宽度
                                     pointRadius: 6,
-                                    pointHoverRadius: 8
+                                    pointHoverRadius: 8,
+                                    pointHoverBorderWidth: 2 // 悬停时边界加粗
                                 });
                             });
 
