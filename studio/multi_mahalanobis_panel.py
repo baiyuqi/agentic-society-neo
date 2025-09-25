@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
 
 from asociety.personality.analysis_utils import calculate_single_profile_mahalanobis
 from studio.progress_dialog import ProgressManager
@@ -45,32 +46,10 @@ class MultiMahalanobisPanel:
         self.save_button = ttk.Button(button_frame, text="Save to SVG", command=self.save_to_svg, state=tk.DISABLED)
         self.save_button.pack(side=tk.LEFT, padx=5)
         
-        self.data_source_templates = [
-            {
-                'name': 'poor300',
-                'template': 'data/db/backup/poor300/deepseek-chat-single-poor-{}-300.db',
-                'color': 'red',
-                'label': 'Poor Quality'
-            },
-            {
-                'name': 'samples300', 
-                'template': 'data/db/backup/samples300/deepseek-chat-single-{}-300.db',
-                'color': 'blue',
-                'label': 'Standard Sample'
-            },
-            {
-                'name': 'narrative300',
-                'template': 'data/db/backup/samples-narrative300/deepseek-chat-single-{}-300-narra.db',
-                'color': 'green', 
-                'label': 'Narrative'
-            }
-        ]
-        
-        # Initialize data sources with current persona
-        # Initialize data sources for both personas separately
-        self.data_sources_persona1 = self._update_data_sources_paths("1")
-        self.data_sources_persona2 = self._update_data_sources_paths("2")
-        self.data_sources = self.data_sources_persona1 + self.data_sources_persona2
+        self.data_source_templates = self._get_individual_data_sources()
+
+        # Initialize data sources - all sources are already configured with full paths
+        self.data_sources = self._update_data_sources_paths("")
         
         # Create paned window for plot and table
         self.results_paned_window = ttk.PanedWindow(main_content_frame, orient=tk.VERTICAL)
@@ -93,23 +72,32 @@ class MultiMahalanobisPanel:
 
     def start_analysis(self):
         def analysis_task(progress_dialog):
-            results_persona1 = {}
-            results_persona2 = {}
+            # Group data sources by persona
+            persona_groups = {}
+            for source in self.data_sources:
+                persona_num = source.get('persona', 'unknown')
+                if persona_num not in persona_groups:
+                    persona_groups[persona_num] = []
+                persona_groups[persona_num].append(source)
 
-            # Calculate for persona1 using original logic (all data sources including narrative)
-            progress_dialog.update_message("正在计算Persona 1...")
-            results_persona1 = self._calculate_persona_results(self.data_sources_persona1, progress_dialog, 0, 50)
+            # Calculate results for each persona
+            results_by_persona = {}
+            total_personas = len(persona_groups)
 
-            # Calculate for persona2 using original logic (all data sources including narrative)
-            progress_dialog.update_message("正在计算Persona 2...")
-            results_persona2 = self._calculate_persona_results(self.data_sources_persona2, progress_dialog, 50, 50)
+            for i, (persona_num, sources) in enumerate(persona_groups.items()):
+                progress_dialog.update_message(f"正在计算Persona {persona_num}...")
+                progress_start = i / total_personas * 100
+                progress_range = 100 / total_personas
 
-            return {'persona1': results_persona1, 'persona2': results_persona2}
+                results_by_persona[f'persona{persona_num}'] = self._calculate_persona_results(
+                    sources, progress_dialog, progress_start, progress_range
+                )
+
+            return results_by_persona
 
         def on_success(results):
             if results:
-                self.results_persona1 = results['persona1']
-                self.results_persona2 = results['persona2']
+                self.results_by_persona = results
                 self.display_results()
 
         def on_error(error):
@@ -126,7 +114,7 @@ class MultiMahalanobisPanel:
     def display_results(self):
         try:
             # Check if we have results to display
-            if not hasattr(self, 'results_persona1') or not self.results_persona1 or not hasattr(self, 'results_persona2') or not self.results_persona2:
+            if not hasattr(self, 'results_by_persona') or not self.results_by_persona:
                 return
 
             # Clear previous plot
@@ -135,155 +123,112 @@ class MultiMahalanobisPanel:
             if self.data_tree:
                 self.data_tree.destroy()
 
-            # Create figure with 2 subplots
-            self.fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
+            # Create figure with fixed subplot sizes using GridSpec
+            num_personas = len(self.results_by_persona)
+
+            # Calculate grid dimensions
+            cols = min(4, num_personas)  # Max 4 columns per row
+            rows = (num_personas + cols - 1) // cols  # Ceiling division
+
+            self.fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 6 * rows))
+
+            # Create flat list of axes for easier iteration
+            axes_flat = []
+            if rows == 1 and cols == 1:
+                # Single subplot
+                axes_flat = [axes]
+            elif rows == 1:
+                # Single row of subplots
+                axes_flat = list(axes)
+            elif cols == 1:
+                # Single column of subplots
+                axes_flat = list(axes)
+            else:
+                # Grid of subplots
+                for i in range(rows):
+                    for j in range(cols):
+                        axes_flat.append(axes[i, j])
+
+            # Remove axes beyond the number of personas
+            axes_flat = axes_flat[:num_personas]
             
             if self.show_curves:
                 # Plot smooth distribution curves for each dataset
                 from scipy.stats import gaussian_kde
 
-                # Plot persona1 results on first subplot
-                filtered_results_p1 = {}
-                for source_name, result in self.results_persona1.items():
-                    if self.show_narrative or 'narrative' not in source_name.lower():
-                        filtered_results_p1[source_name] = result
+                # Plot results for each persona
+                for i, (persona_key, persona_results) in enumerate(self.results_by_persona.items()):
+                    ax = axes_flat[i]
+                    persona_num = persona_key.replace('persona', '')
 
-                # Determine common x-range for persona1 curves
-                all_distances_p1 = np.concatenate([result['distances_clean'] for result in filtered_results_p1.values()])
-                x_min_p1 = np.min(all_distances_p1) - 0.5
-                x_max_p1 = np.max(all_distances_p1) + 0.5
-                x_p1 = np.linspace(x_min_p1, x_max_p1, 1000)
+                    filtered_results = {}
+                    for source_name, result in persona_results.items():
+                        if self.show_narrative or 'narrative' not in source_name.lower():
+                            filtered_results[source_name] = result
 
-                for source_name, result in filtered_results_p1.items():
-                    distances = result['distances_clean']
-                    color = result['color']
-                    label = result['label']
+                    # Determine common x-range for curves
+                    all_distances = np.concatenate([result['distances_clean'] for result in filtered_results.values()])
+                    x_min = np.min(all_distances) - 0.5
+                    x_max = np.max(all_distances) + 0.5
+                    x = np.linspace(x_min, x_max, 1000)
 
-                    # Create kernel density estimate for smooth curve
-                    if len(distances) > 1:
-                        kde = gaussian_kde(distances)
-                        y = kde(x_p1)
+                    for source_name, result in filtered_results.items():
+                        distances = result['distances_clean']
+                        color = result['color']
 
-                        # Plot smooth curve
-                        ax1.plot(x_p1, y, color=color, linewidth=2, label=label)
+                        # Create kernel density estimate for smooth curve
+                        if len(distances) > 1:
+                            kde = gaussian_kde(distances)
+                            y = kde(x)
 
-                        # Fill under curve for better visibility
-                        ax1.fill_between(x_p1, y, alpha=0.3, color=color)
+                            # Plot smooth curve
+                            ax.plot(x, y, color=color, linewidth=2)
 
-                ax1.set_title('Persona 1 - Mahalanobis Distance Distribution (KDE)')
-                ax1.legend()
+                            # Fill under curve for better visibility
+                            ax.fill_between(x, y, alpha=0.3, color=color)
 
-                # Plot persona2 results on second subplot
-                filtered_results_p2 = {}
-                for source_name, result in self.results_persona2.items():
-                    if self.show_narrative or 'narrative' not in source_name.lower():
-                        filtered_results_p2[source_name] = result
-
-                # Determine common x-range for persona2 curves
-                all_distances_p2 = np.concatenate([result['distances_clean'] for result in filtered_results_p2.values()])
-                x_min_p2 = np.min(all_distances_p2) - 0.5
-                x_max_p2 = np.max(all_distances_p2) + 0.5
-                x_p2 = np.linspace(x_min_p2, x_max_p2, 1000)
-
-                for source_name, result in filtered_results_p2.items():
-                    distances = result['distances_clean']
-                    color = result['color']
-                    label = result['label']
-
-                    # Create kernel density estimate for smooth curve
-                    if len(distances) > 1:
-                        kde = gaussian_kde(distances)
-                        y = kde(x_p2)
-
-                        # Plot smooth curve
-                        ax2.plot(x_p2, y, color=color, linewidth=2, label=label)
-
-                        # Fill under curve for better visibility
-                        ax2.fill_between(x_p2, y, alpha=0.3, color=color)
-
-                ax2.set_title('Persona 2 - Mahalanobis Distance Distribution (KDE)')
-                ax2.legend()
+                    ax.set_title(f'Persona {persona_num}')
             else:
                 # Plot histograms for each dataset
-                legend_elements_p1 = []
-                legend_elements_p2 = []
+                # Plot results for each persona
+                for i, (persona_key, persona_results) in enumerate(self.results_by_persona.items()):
+                    ax = axes_flat[i]
+                    persona_num = persona_key.replace('persona', '')
 
-                # Plot persona1 histograms on first subplot
-                filtered_results_p1 = {}
-                for source_name, result in self.results_persona1.items():
-                    if self.show_narrative or 'narrative' not in source_name.lower():
-                        filtered_results_p1[source_name] = result
+                    filtered_results = {}
+                    for source_name, result in persona_results.items():
+                        if self.show_narrative or 'narrative' not in source_name.lower():
+                            filtered_results[source_name] = result
 
-                for source_name, result in filtered_results_p1.items():
-                    distances = result['distances_clean']
-                    color = result['color']
-                    label = result['label']
+                    for source_name, result in filtered_results.items():
+                        distances = result['distances_clean']
+                        color = result['color']
 
-                    # Plot histogram
-                    counts, bin_edges, _ = ax1.hist(
-                        distances, bins='auto', density=True, alpha=0.6,
-                        color=color, edgecolor='black', label=label
-                    )
+                        # Plot histogram
+                        counts, bin_edges, _ = ax.hist(
+                            distances, bins='auto', density=True, alpha=0.6,
+                            color=color, edgecolor='black'
+                        )
 
-                    legend_elements_p1.append(Patch(color=color, label=label))
-
-                ax1.set_title('Persona 1 - Mahalanobis Distance Distribution (Histogram)')
-                ax1.legend(handles=legend_elements_p1)
-
-                # Plot persona2 histograms on second subplot
-                filtered_results_p2 = {}
-                for source_name, result in self.results_persona2.items():
-                    if self.show_narrative or 'narrative' not in source_name.lower():
-                        filtered_results_p2[source_name] = result
-
-                for source_name, result in filtered_results_p2.items():
-                    distances = result['distances_clean']
-                    color = result['color']
-                    label = result['label']
-
-                    # Plot histogram
-                    counts, bin_edges, _ = ax2.hist(
-                        distances, bins='auto', density=True, alpha=0.6,
-                        color=color, edgecolor='black', label=label
-                    )
-
-                    legend_elements_p2.append(Patch(color=color, label=label))
-
-                ax2.set_title('Persona 2 - Mahalanobis Distance Distribution (Histogram)')
-                ax2.legend(handles=legend_elements_p2)
+                    ax.set_title(f'Persona {persona_num}')
             
-            # Configure both subplots
-            for ax_sub in [ax1, ax2]:
-                ax_sub.set_xlabel('Mahalanobis Distance')
-                ax_sub.set_ylabel('Probability Density')
-                ax_sub.grid(True, which='both', linestyle='--', linewidth=0.5)
+            # Add main title
+            if self.show_curves:
+                self.fig.suptitle('Mahalanobis Distance Distribution (KDE)', fontsize=16, fontweight='bold')
+            else:
+                self.fig.suptitle('Mahalanobis Distance Distribution (Histogram)', fontsize=16, fontweight='bold')
+
+            # Configure all subplots
+            for ax_sub in axes_flat:
+                if ax_sub is not None:
+                    ax_sub.set_xlabel('Mahalanobis Distance')
+                    ax_sub.set_ylabel('Probability Density')
+                    ax_sub.grid(True, which='both', linestyle='--', linewidth=0.5)
+
             
-            # Add statistical annotations for persona1
-            stats_text_p1 = []
-            for source_name, result in self.results_persona1.items():
-                if self.show_narrative or 'narrative' not in source_name.lower():
-                    stats_text_p1.append(
-                        f"{result['label']}: CV={result['cv']:.3f}, Kurtosis={result['kurtosis']:.3f}"
-                    )
+            # 添加总的图例
+            self._add_global_legend()
 
-            # Add text box with statistics for persona1
-            stats_str_p1 = '\n'.join(stats_text_p1)
-            ax1.text(0.02, 0.98, stats_str_p1, transform=ax1.transAxes, fontsize=8,
-                   verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
-
-            # Add statistical annotations for persona2
-            stats_text_p2 = []
-            for source_name, result in self.results_persona2.items():
-                if self.show_narrative or 'narrative' not in source_name.lower():
-                    stats_text_p2.append(
-                        f"{result['label']}: CV={result['cv']:.3f}, Kurtosis={result['kurtosis']:.3f}"
-                    )
-
-            # Add text box with statistics for persona2
-            stats_str_p2 = '\n'.join(stats_text_p2)
-            ax2.text(0.02, 0.98, stats_str_p2, transform=ax2.transAxes, fontsize=8,
-                   verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
-            
             # Create canvas
             self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
             self.canvas.draw()
@@ -307,27 +252,18 @@ class MultiMahalanobisPanel:
             self.data_tree.heading(col, text=col)
             self.data_tree.column(col, width=100, anchor='center')
 
-        # Add data for persona1 (respect narrative toggle)
-        for source_name, result in self.results_persona1.items():
-            if self.show_narrative or 'narrative' not in source_name.lower():
-                self.data_tree.insert('', 'end', values=(
-                    'Persona 1',
-                    result['label'],
-                    f"{result['cv']:.4f}",
-                    f"{result['kurtosis']:.4f}",
-                    len(result['distances_clean'])
-                ))
-
-        # Add data for persona2 (respect narrative toggle)
-        for source_name, result in self.results_persona2.items():
-            if self.show_narrative or 'narrative' not in source_name.lower():
-                self.data_tree.insert('', 'end', values=(
-                    'Persona 2',
-                    result['label'],
-                    f"{result['cv']:.4f}",
-                    f"{result['kurtosis']:.4f}",
-                    len(result['distances_clean'])
-                ))
+        # Add data for each persona (respect narrative toggle)
+        for persona_key, persona_results in self.results_by_persona.items():
+            persona_num = persona_key.replace('persona', '')
+            for source_name, result in persona_results.items():
+                if self.show_narrative or 'narrative' not in source_name.lower():
+                    self.data_tree.insert('', 'end', values=(
+                        f'Persona {persona_num}',
+                        result['label'],
+                        f"{result['cv']:.4f}",
+                        f"{result['kurtosis']:.4f}",
+                        len(result['distances_clean'])
+                    ))
         
         # Add scrollbar
         scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.data_tree.yview)
@@ -376,8 +312,7 @@ class MultiMahalanobisPanel:
             self.view_toggle.config(text="切换为曲线")
         
         # Redisplay results with new view mode
-        if (hasattr(self, 'results_persona1') and self.results_persona1 and
-            hasattr(self, 'results_persona2') and self.results_persona2):
+        if hasattr(self, 'results_by_persona') and self.results_by_persona:
             self.display_results()
 
     def toggle_narrative(self):
@@ -389,8 +324,7 @@ class MultiMahalanobisPanel:
             self.narrative_toggle.config(text="显示 Narrative")
 
         # Redisplay results with new narrative setting
-        if (hasattr(self, 'results_persona1') and self.results_persona1 and
-            hasattr(self, 'results_persona2') and self.results_persona2):
+        if hasattr(self, 'results_by_persona') and self.results_by_persona:
             self.display_results()
 
     def _calculate_persona_results(self, data_sources, progress_dialog, progress_start, progress_range):
@@ -458,12 +392,65 @@ class MultiMahalanobisPanel:
 
         return results
 
+    def _get_individual_data_sources(self):
+        """Get data sources from individual directory structure"""
+        individual_dir = "data/db/backup/individual"
+        data_sources = []
+
+        # Define color scheme for different dataset types
+        color_scheme = {
+            'poor': 'red',
+            'standard': 'blue',
+            'narrative': 'green'
+        }
+
+        # Find all persona subdirectories
+        persona_dirs = []
+        if os.path.exists(individual_dir):
+            for item in os.listdir(individual_dir):
+                item_path = os.path.join(individual_dir, item)
+                if os.path.isdir(item_path) and item.startswith('persona'):
+                    persona_dirs.append(item)
+
+        # Sort persona directories numerically
+        persona_dirs.sort(key=lambda x: int(x.replace('persona', '')) if x.replace('persona', '').isdigit() else 0)
+
+        # Create data sources for each persona and dataset type
+        for persona_dir in persona_dirs:
+            persona_path = os.path.join(individual_dir, persona_dir)
+            persona_num = persona_dir.replace('persona', '')
+
+            # Find all database files in this persona directory
+            for db_file in os.listdir(persona_path):
+                if db_file.endswith('.db'):
+                    dataset_type = db_file.replace('.db', '')
+                    db_path = os.path.join(persona_path, db_file)
+
+                    # Determine color based on dataset type
+                    color = color_scheme.get(dataset_type, 'gray')
+
+                    # Create unique name and label
+                    source_name = f"{persona_dir}_{dataset_type}"
+                    label = f"Persona {persona_num} - {dataset_type.capitalize()}"
+
+                    data_sources.append({
+                        'name': source_name,
+                        'template': db_path,  # Use full path as template
+                        'color': color,
+                        'label': label,
+                        'persona': persona_num,
+                        'dataset_type': dataset_type
+                    })
+
+        return data_sources
+
     def _update_data_sources_paths(self, persona_number):
         """Update data source paths with the selected persona number"""
         updated_sources = []
         for template in self.data_source_templates:
             updated_source = template.copy()
-            updated_source['path'] = template['template'].format(persona_number)
+            # For individual data sources, we already have the full path
+            updated_source['path'] = template['template']
             updated_sources.append(updated_source)
         return updated_sources
 
@@ -488,3 +475,33 @@ class MultiMahalanobisPanel:
         if file_path:
             self.fig.savefig(file_path, format="svg", bbox_inches="tight")
             messagebox.showinfo("Success", f"Plot saved successfully to:\n{file_path}")
+
+    def _add_global_legend(self):
+        """Add a global legend to the figure"""
+        # 创建图例元素
+        legend_elements = []
+
+        # 数据集类型颜色图例
+        color_scheme = {
+            'poor': 'red',
+            'standard': 'blue',
+            'narrative': 'green'
+        }
+
+        for dataset_type, color in color_scheme.items():
+            legend_elements.append(Patch(facecolor=color, label=dataset_type.capitalize()))
+
+        # 添加分隔线
+        legend_elements.append(Patch(facecolor='white', label=''))
+
+        # 视图模式图例
+        if self.show_curves:
+            legend_elements.append(Line2D([0], [0], color='black', label='KDE Curve', linewidth=2))
+        else:
+            legend_elements.append(Patch(facecolor='gray', alpha=0.6, label='Histogram'))
+
+        # 添加图例到figure
+        self.fig.legend(handles=legend_elements, loc='lower center',
+                       bbox_to_anchor=(0.5, 0.02), ncol=5, fontsize='small')
+        # 调整布局以容纳图例
+        self.fig.subplots_adjust(bottom=0.15)

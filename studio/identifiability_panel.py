@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.patches import Patch
 
 from asociety.personality.analysis_utils import (
     load_profiles_from_directory,
@@ -32,9 +33,13 @@ class IdentifiabilityPanel:
         self.save_button = ttk.Button(control_frame, text="Save to SVG", command=self.save_to_svg, state=tk.DISABLED)
         self.save_button.pack(side=tk.LEFT)
 
-        # --- Combined Plot Frame ---
-        self.plot_frame = ttk.Frame(self.main)
-        self.plot_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # --- Main Paned Window for Plot and Table ---
+        self.main_paned = ttk.PanedWindow(self.main, orient=tk.VERTICAL)
+        self.main_paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # --- Plot Frame (Top 70%) ---
+        self.plot_frame = ttk.Frame(self.main_paned)
+        self.main_paned.add(self.plot_frame, weight=7)
 
         # ARI labels frame
         ari_frame = ttk.Frame(self.plot_frame)
@@ -56,44 +61,50 @@ class IdentifiabilityPanel:
         self.fig.set_constrained_layout(True)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+        # --- Table Frame (Bottom 30%) ---
+        self.table_frame = ttk.Frame(self.main_paned)
+        self.main_paned.add(self.table_frame, weight=3)
+        self.data_tree = None
+
         self.progress_manager = ProgressManager(self.main)
 
     def start_analysis(self):
-        dir_samples = "data/db/backup/samples300"
-        dir_poor = "data/db/backup/poor300"
+        # Get persona pairs from individual directory
+        persona_pairs = self._get_persona_pairs()
 
-        if not os.path.isdir(dir_samples) or not os.path.isdir(dir_poor):
-            messagebox.showerror("Error", "Required data directories 'samples300' or 'poor300' not found.")
+        if not persona_pairs:
+            messagebox.showerror("Error", "No valid persona pairs found in individual directory.")
             return
 
         # --- Analysis Task Definition ---
         def analysis_task(progress_dialog):
             results = {}
-            # Analyze Standard Samples
-            progress_dialog.update_message("Analyzing Standard Samples (samples300)...")
-            results['samples'] = self._run_single_analysis(dir_samples)
-            if progress_dialog.is_cancelled(): return None
+            total_pairs = len(persona_pairs)
 
-            # Analyze Poor Samples
-            progress_dialog.update_message("Analyzing Poor Samples (poor300)...")
-            results['poor'] = self._run_single_analysis(dir_poor)
-            if progress_dialog.is_cancelled(): return None
+            for i, (persona1, persona2) in enumerate(persona_pairs):
+                progress_dialog.update_message(f"Analyzing pair {persona1}-{persona2}...")
+
+                # Analyze poor samples for this pair
+                poor_results = self._run_pair_analysis(persona1, persona2, 'poor')
+                if progress_dialog.is_cancelled(): return None
+
+                # Analyze standard samples for this pair
+                standard_results = self._run_pair_analysis(persona1, persona2, 'standard')
+                if progress_dialog.is_cancelled(): return None
+
+                results[f"{persona1}_{persona2}"] = {
+                    'poor': poor_results,
+                    'standard': standard_results
+                }
+
+                progress_dialog.set_progress((i + 1) / total_pairs * 100)
 
             return results
 
         # --- Callbacks ---
         def on_success(results):
             if results:
-                if results.get('samples'):
-                    self.display_results(
-                        results['samples'], self.ax_samples,
-                        self.ari_label_samples, "Standard Samples (Samples 300)"
-                    )
-                if results.get('poor'):
-                    self.display_results(
-                        results['poor'], self.ax_poor,
-                        self.ari_label_poor, "Poor Samples (Poor 300)"
-                    )
+                self.display_results(results)
                 # Enable save button and redraw canvas
                 self.save_button.config(state=tk.NORMAL)
                 self.canvas.draw()
@@ -129,12 +140,163 @@ class IdentifiabilityPanel:
             'predicted_labels': predicted_labels
         }
 
-    def display_results(self, result, ax, ari_label, title):
-        """Displays the results on the given matplotlib axis."""
+
+    def set_language(self, lang):
+        pass
+
+    def setData(self, data, update_callback):
+        # Panel is self-contained, does not need external data
+        pass
+
+    def _get_persona_pairs(self):
+        """Get persona pairs: (1,2), (2,3), ..., (n-1,n), (n,1)"""
+        individual_dir = "data/db/backup/individual"
+        persona_dirs = []
+
+        if os.path.exists(individual_dir):
+            for item in os.listdir(individual_dir):
+                item_path = os.path.join(individual_dir, item)
+                if os.path.isdir(item_path) and item.startswith('persona'):
+                    persona_dirs.append(item)
+
+        # Sort persona directories numerically
+        persona_dirs.sort(key=lambda x: int(x.replace('persona', '')) if x.replace('persona', '').isdigit() else 0)
+
+        if len(persona_dirs) < 2:
+            return []
+
+        # Extract persona numbers
+        persona_nums = [int(p.replace('persona', '')) for p in persona_dirs]
+
+        # Create pairs: (1,2), (2,3), ..., (n-1,n), (n,1)
+        pairs = []
+        for i in range(len(persona_nums)):
+            persona1 = persona_nums[i]
+            persona2 = persona_nums[(i + 1) % len(persona_nums)]
+            pairs.append((persona1, persona2))
+
+        return pairs
+
+    def _run_pair_analysis(self, persona1, persona2, dataset_type):
+        """Run analysis for a specific persona pair and dataset type"""
+        # Load data from both personas for the given dataset type
+        dir1 = f"data/db/backup/individual/persona{persona1}"
+        dir2 = f"data/db/backup/individual/persona{persona2}"
+
+        # Find the database file for the specified dataset type
+        db_files = []
+        for dir_path in [dir1, dir2]:
+            if os.path.exists(dir_path):
+                for file in os.listdir(dir_path):
+                    if file.endswith('.db') and file.replace('.db', '') == dataset_type:
+                        db_files.append(os.path.join(dir_path, file))
+
+        if len(db_files) != 2:
+            raise ValueError(f"Could not find {dataset_type} databases for personas {persona1} and {persona2}")
+
+        # Load and combine data from both personas
+        profile_dataframes = []
+        profile_names = []
+
+        from asociety.personality.analysis_utils import load_personality_data
+
+        for i, db_file in enumerate(db_files):
+            df = load_personality_data(db_file)
+            profile_dataframes.append(df)
+            profile_names.append(f"Persona {persona1 if i == 0 else persona2}")
+
+        # Run the analysis
+        scaled_vectors, true_labels = get_combined_and_scaled_data(profile_dataframes)
+        num_profiles = len(profile_dataframes)
+        predicted_labels, ari_score = run_kmeans_analysis(scaled_vectors, true_labels, num_profiles)
+        principal_components, explained_variance = run_pca(scaled_vectors)
+
+        return {
+            'profile_names': profile_names,
+            'ari_score': ari_score,
+            'principal_components': principal_components,
+            'explained_variance': explained_variance,
+            'true_labels': true_labels,
+            'predicted_labels': predicted_labels,
+            'persona1': persona1,
+            'persona2': persona2,
+            'dataset_type': dataset_type
+        }
+
+    def display_results(self, results):
+        """Display results for all persona pairs"""
+        # Clear previous plot and table
+        if hasattr(self, 'canvas') and self.canvas:
+            self.canvas.get_tk_widget().destroy()
+        if self.data_tree:
+            self.data_tree.destroy()
+            self.data_tree = None
+
+        # 统计所有点的范围，用于统一坐标轴
+        all_pc1, all_pc2 = [], []
+        for pair_results in results.values():
+            all_pc1.extend(pair_results['poor']['principal_components'][:, 0])
+            all_pc1.extend(pair_results['standard']['principal_components'][:, 0])
+            all_pc2.extend(pair_results['poor']['principal_components'][:, 1])
+            all_pc2.extend(pair_results['standard']['principal_components'][:, 1])
+
+        global_xmin, global_xmax = min(all_pc1), max(all_pc1)
+        global_ymin, global_ymax = min(all_pc2), max(all_pc2)
+
+        # 给个小边距，防止点贴边
+        margin_x = (global_xmax - global_xmin) * 0.05
+        margin_y = (global_ymax - global_ymin) * 0.05
+        self.global_xlim = (global_xmin - margin_x, global_xmax + margin_x)
+        self.global_ylim = (global_ymin - margin_y, global_ymax + margin_y)
+
+        # Create new figure with fixed subplot sizes using GridSpec
+        num_pairs = len(results)
+        cols = min(4, num_pairs)  # Max 4 pairs per row
+        rows = (num_pairs + cols - 1) // cols  # Ceiling division
+
+        # Each pair gets 2 subplots (poor above, standard below)
+        self.fig, axes = plt.subplots(rows * 2, cols, figsize=(8 * cols, 6 * rows))
+
+        # Plot each pair
+        for i, (pair_key, pair_results) in enumerate(results.items()):
+            persona1, persona2 = pair_key.split('_')
+
+            # Calculate grid position
+            row_pair = i // cols  # Which pair row (0-based)
+            col_pair = i % cols   # Which column (0-based)
+
+            # Poor subplot (top row of the pair)
+            poor_row = row_pair * 2
+            if cols > 1:
+                poor_ax = axes[poor_row, col_pair]
+            else:
+                poor_ax = axes[poor_row] if rows * 2 > 1 else axes
+            self._plot_single_result(pair_results['poor'], poor_ax, f"Poor")
+
+            # Standard subplot (bottom row of the pair)
+            standard_row = row_pair * 2 + 1
+            if cols > 1:
+                standard_ax = axes[standard_row, col_pair]
+            else:
+                standard_ax = axes[standard_row] if rows * 2 > 1 else axes
+            self._plot_single_result(pair_results['standard'], standard_ax, f"Standard")
+
+        # Set main title
+        self.fig.suptitle('Identifiability Analysis: Persona Pair Comparison', fontsize=16, fontweight='bold')
+
+        # 添加总的图例
+        self._add_global_legend()
+
+        # Create new canvas
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        # Display statistics table
+        self.display_statistics_table(results)
+
+    def _plot_single_result(self, result, ax, title):
+        """Plot a single analysis result on the given axis"""
         ax.clear()
-        
-        ari_score = result['ari_score']
-        ari_label.config(text=f"Adjusted Rand Index (ARI): {ari_score:.4f}")
 
         plot_df = pd.DataFrame({
             'PC1': result['principal_components'][:, 0],
@@ -143,23 +305,130 @@ class IdentifiabilityPanel:
             'Predicted Cluster': [f'Cluster {label + 1}' for label in result['predicted_labels']]
         })
 
-        sns.scatterplot(
-            data=plot_df, x='PC1', y='PC2', hue='Predicted Cluster',
-            style='True Profile', s=80, alpha=0.8, palette='tab10', ax=ax
-        )
-        
-        ax.set_title(title)
-        ax.set_xlabel(f'PC 1 ({result["explained_variance"][0]:.1%} variance)')
-        ax.set_ylabel(f'PC 2 ({result["explained_variance"][1]:.1%} variance)')
-        ax.legend(title='Legend', fontsize='small')
+        # 统一样式：左侧persona用圆形，右侧persona用三角形
+        persona1_name = result['profile_names'][0]
+        persona2_name = result['profile_names'][1]
+
+        # 为每个点设置统一的样式
+        markers = []
+        for label in result['true_labels']:
+            if label == 0:  # 左侧persona
+                markers.append('o')  # 圆形
+            else:  # 右侧persona
+                markers.append('^')  # 三角形
+
+        plot_df['Marker'] = markers
+
+        # 使用统一的颜色和样式
+        cluster_colors = plt.cm.tab10(range(2))
+        for cluster_num in set(plot_df['Predicted Cluster']):
+            cluster_idx = int(cluster_num.replace('Cluster ', '')) - 1
+            cluster_data = plot_df[plot_df['Predicted Cluster'] == cluster_num]
+            for marker_type in ['o', '^']:
+                marker_data = cluster_data[cluster_data['Marker'] == marker_type]
+                if len(marker_data) > 0:
+                    ax.scatter(marker_data['PC1'], marker_data['PC2'],
+                             c=[cluster_colors[cluster_idx]], s=80, alpha=0.7,
+                             edgecolors='black', linewidths=0.5, marker=marker_type)
+
+        ax.set_title(f"{title}", pad=10)  # Add padding to prevent overlap
+        ax.set_xlabel('PC 1', labelpad=5)   # Add padding to axis labels
+        ax.set_ylabel('PC 2', labelpad=5)
         ax.grid(True, which='both', linestyle='--', linewidth=0.5)
 
-    def set_language(self, lang):
-        pass
+        # 统一坐标范围 + 锁定纵横比
+        ax.set_xlim(self.global_xlim)
+        ax.set_ylim(self.global_ylim)
+        ax.set_aspect(0.7, adjustable='box')  # 扁一点的比例 (高度:宽度 = 0.7:1)
 
-    def setData(self, data, update_callback):
-        # Panel is self-contained, does not need external data
-        pass
+    def _add_global_legend(self):
+        """Add a global legend to the figure"""
+        # Create legend elements
+        legend_elements = []
+
+        # Cluster colors legend - only cluster1 and cluster2
+        cluster_colors = plt.cm.tab10(range(2))
+        for i in range(2):
+            legend_elements.append(Patch(facecolor=cluster_colors[i], label=f'Cluster {i+1}'))
+
+        # Add separator
+        legend_elements.append(Patch(facecolor='white', label=''))
+
+        # Style legend - use Line2D to properly display markers
+        from matplotlib.lines import Line2D
+        legend_elements.append(Line2D([0], [0], marker='o', color='black', label='Persona 1',
+                                     markersize=8, linestyle='None'))
+        legend_elements.append(Line2D([0], [0], marker='^', color='black', label='Persona 2',
+                                     markersize=8, linestyle='None'))
+
+        # Add legend to figure with optimized column layout
+        # For 2 personas and 2 clusters, use 2 columns for better grouping
+        self.fig.legend(handles=legend_elements, loc='lower center',
+                       bbox_to_anchor=(0.5, 0.02), ncol=2, fontsize='small')
+        # Adjust layout to accommodate legend with more space
+        self.fig.subplots_adjust(bottom=0.20)
+
+    def display_statistics_table(self, results):
+        """Display identifiability analysis results in a table"""
+        # Clear previous table
+        if self.data_tree:
+            self.data_tree.destroy()
+
+        # Define columns for multi-pair analysis
+        columns = ['Persona Pair', 'Dataset Type', 'ARI Score', 'PC1 Variance', 'PC2 Variance',
+                  'Sample Count', 'Persona1', 'Persona2']
+
+        self.data_tree = ttk.Treeview(self.table_frame, columns=columns, show='headings', height=10)
+
+        # Configure column headings
+        for col in columns:
+            self.data_tree.heading(col, text=col)
+
+        # Set column widths
+        self.data_tree.column('Persona Pair', width=120)
+        self.data_tree.column('Dataset Type', width=100)
+        self.data_tree.column('ARI Score', width=100)
+        self.data_tree.column('PC1 Variance', width=100)
+        self.data_tree.column('PC2 Variance', width=100)
+        self.data_tree.column('Sample Count', width=100)
+        self.data_tree.column('Persona1', width=80)
+        self.data_tree.column('Persona2', width=80)
+
+        # Populate table with results
+        for pair_key, pair_results in results.items():
+            persona1, persona2 = pair_key.split('_')
+
+            # Poor dataset results
+            poor_results = pair_results['poor']
+            self.data_tree.insert('', 'end', values=(
+                f"{persona1}-{persona2}",
+                'Poor',
+                f"{poor_results['ari_score']:.4f}",
+                f"{poor_results['explained_variance'][0]:.2%}",
+                f"{poor_results['explained_variance'][1]:.2%}",
+                len(poor_results['true_labels']),
+                persona1,
+                persona2
+            ))
+
+            # Standard dataset results
+            standard_results = pair_results['standard']
+            self.data_tree.insert('', 'end', values=(
+                f"{persona1}-{persona2}",
+                'Standard',
+                f"{standard_results['ari_score']:.4f}",
+                f"{standard_results['explained_variance'][0]:.2%}",
+                f"{standard_results['explained_variance'][1]:.2%}",
+                len(standard_results['true_labels']),
+                persona1,
+                persona2
+            ))
+
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.data_tree.yview)
+        self.data_tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side='right', fill='y')
+        self.data_tree.pack(fill=tk.BOTH, expand=True)
 
     def save_to_svg(self):
         """Save the combined matplotlib figure as SVG vector image"""

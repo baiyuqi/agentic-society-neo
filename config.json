@@ -1,6 +1,6 @@
 {
     "llm": "deepseek",
-    "database": "data/db/300-3/narrative.db",
+    "database": "data/db/300-4/standard.db",
     "question_prompt": "sheet_prompt_antialign",
     "persona_prompt": "from_skeleton_narrative",
     "request_method": "sheet"

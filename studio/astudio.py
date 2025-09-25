@@ -21,6 +21,7 @@ from studio.narrative_comparison_panel import NarrativeComparisonPanel # Import 
 from studio.stability_analysis_panel import StabilityAnalysisPanel # Import the new stability panel
 from studio.cfa_panel import CFAPanel # Import the new CFA panel
 from studio.multi_mahalanobis_panel import MultiMahalanobisPanel # Import the new multi Mahalanobis panel
+from studio.group_identifiability_panel import GroupIdentifiabilityPanel # Import the new group identifiability panel
 from studio.personality_browse import PersonalityBrowser
 from studio.personality_analysis import PersonalityAnalysis
 from studio.personality_stats import PersonalityStats
@@ -59,6 +60,7 @@ LANGUAGES = {
         'factor_analysis': '因素分析 (EFA)',
         'cfa_analysis': '验证性因素分析 (CFA)',
         'identifiability_analysis': '可识别性分析',
+        'group_identifiability_analysis': '群体可识别性分析',
         'stability_analysis': '稳定性分析',
         'special_analysis': '专题分析',
         'select_db': '选择数据库文件...',
@@ -107,6 +109,7 @@ LANGUAGES = {
         'factor_analysis': 'Factor Analysis (EFA)',
         'cfa_analysis': 'Confirmatory Factor Analysis (CFA)',
         'identifiability_analysis': 'Identifiability Analysis',
+        'group_identifiability_analysis': 'Group Identifiability Analysis',
         'stability_analysis': 'Stability Analysis',
         'special_analysis': 'Special Analysis',
         'select_db': 'Select Database File...',
@@ -189,6 +192,7 @@ class MainWindow:
             'factor': FactorAnalysisPanel(self.right),
             'cfa': CFAPanel(self.right),
             'identifiability': IdentifiabilityPanel(self.right),
+            'group_identifiability': GroupIdentifiabilityPanel(self.right),
             'curve_comparison': CurveComparisonPanel(self.right),
             'raw_comparison': RawComparisonPanel(self.right),
             'antialign_comparison': AntialignComparisonPanel(self.right),
@@ -297,6 +301,7 @@ class MainWindow:
         # Children for "Special Analysis"
         tv.insert('special_analysis', 'end', 'stability', text=lang['stability_analysis'], image='')
         tv.insert('special_analysis', 'end', 'identifiability', text=lang['identifiability_analysis'], image='')
+        tv.insert('special_analysis', 'end', 'group_identifiability', text=lang['group_identifiability_analysis'], image='')
         tv.insert('special_analysis', 'end', 'multi_mahalanobis', text=lang['multi_mahalanobis_distance'], image='')
         tv.insert('special_analysis', 'end', 'curve_comparison', text='年龄维度曲线对比 (deepseek)', image='')
         tv.insert('special_analysis', 'end', 'raw_comparison', text='正常生成画像曲线分析', image='')
@@ -327,6 +332,7 @@ class MainWindow:
             'factor': 'factor',
             'cfa': 'cfa',
             'identifiability': 'identifiability',
+            'group_identifiability': 'group_identifiability',
             'curve_comparison': 'curve_comparison',
             'raw_comparison': 'raw_comparison',
             'antialign_comparison': 'antialign_comparison',
