@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.patches import Patch
+from scipy.spatial.distance import euclidean
 
 from asociety.personality.analysis_utils import (
     load_profiles_from_directory,
@@ -209,8 +210,13 @@ class IdentifiabilityPanel:
         # Run the analysis
         scaled_vectors, true_labels = get_combined_and_scaled_data(profile_dataframes)
         num_profiles = len(profile_dataframes)
-        predicted_labels, ari_score = run_kmeans_analysis(scaled_vectors, true_labels, num_profiles)
+        kmeans, predicted_labels, ari_score = run_kmeans_analysis(scaled_vectors, true_labels, num_profiles, return_model=True)
         principal_components, explained_variance = run_pca(scaled_vectors)
+
+        # Calculate centroid distance for two clusters
+        centroid_distance = 0.0
+        if len(kmeans.cluster_centers_) == 2:
+            centroid_distance = euclidean(kmeans.cluster_centers_[0], kmeans.cluster_centers_[1])
 
         return {
             'profile_names': profile_names,
@@ -221,7 +227,8 @@ class IdentifiabilityPanel:
             'predicted_labels': predicted_labels,
             'persona1': persona1,
             'persona2': persona2,
-            'dataset_type': dataset_type
+            'dataset_type': dataset_type,
+            'centroid_distance': centroid_distance
         }
 
     def display_results(self, results):
@@ -401,8 +408,8 @@ class IdentifiabilityPanel:
             self.data_tree.destroy()
 
         # Define columns for multi-pair analysis
-        columns = ['Persona Pair', 'Dataset Type', 'ARI Score', 'PC1 Variance', 'PC2 Variance',
-                  'Sample Count', 'Persona1', 'Persona2']
+        columns = ['Persona Pair', 'Dataset Type', 'ARI Score', 'Centroid Distance', 'PC1 Variance', 'PC2 Variance',
+                  'Sample Count']
 
         self.data_tree = ttk.Treeview(self.table_frame, columns=columns, show='headings', height=10)
 
@@ -414,11 +421,10 @@ class IdentifiabilityPanel:
         self.data_tree.column('Persona Pair', width=120)
         self.data_tree.column('Dataset Type', width=100)
         self.data_tree.column('ARI Score', width=100)
+        self.data_tree.column('Centroid Distance', width=120)
         self.data_tree.column('PC1 Variance', width=100)
         self.data_tree.column('PC2 Variance', width=100)
         self.data_tree.column('Sample Count', width=100)
-        self.data_tree.column('Persona1', width=80)
-        self.data_tree.column('Persona2', width=80)
 
         # Populate table with results
         for pair_key, pair_results in results.items():
@@ -430,11 +436,10 @@ class IdentifiabilityPanel:
                 f"{persona1}-{persona2}",
                 'Poor',
                 f"{poor_results['ari_score']:.4f}",
+                f"{poor_results.get('centroid_distance', 0):.4f}",
                 f"{poor_results['explained_variance'][0]:.2%}",
                 f"{poor_results['explained_variance'][1]:.2%}",
-                len(poor_results['true_labels']),
-                persona1,
-                persona2
+                len(poor_results['true_labels'])
             ))
 
             # Standard dataset results
@@ -443,11 +448,10 @@ class IdentifiabilityPanel:
                 f"{persona1}-{persona2}",
                 'Standard',
                 f"{standard_results['ari_score']:.4f}",
+                f"{standard_results.get('centroid_distance', 0):.4f}",
                 f"{standard_results['explained_variance'][0]:.2%}",
                 f"{standard_results['explained_variance'][1]:.2%}",
-                len(standard_results['true_labels']),
-                persona1,
-                persona2
+                len(standard_results['true_labels'])
             ))
 
         # Add scrollbar

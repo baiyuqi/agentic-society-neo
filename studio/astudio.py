@@ -14,6 +14,7 @@ from studio.comparison_panel import ComparisonPanel # Import the new comparison 
 from studio.internal_consistency_panel import InternalConsistencyPanel # Import the new panel
 from studio.factor_analysis_panel import FactorAnalysisPanel # Import the factor analysis panel
 from studio.identifiability_panel import IdentifiabilityPanel # Import the new identifiability panel
+from studio.single_identifiability_panel import SingleIdentifiabilityPanel # Import the single identifiability panel
 from studio.curve_comparison_panel import CurveComparisonPanel # Import the new curve comparison panel
 from studio.raw_comparison_panel import RawComparisonPanel # Import the new raw comparison panel
 from studio.antialign_comparison_panel import AntialignComparisonPanel # Import the new antialign comparison panel
@@ -61,6 +62,7 @@ LANGUAGES = {
         'cfa_analysis': '验证性因素分析 (CFA)',
         'identifiability_analysis': '可识别性分析',
         'group_identifiability_analysis': '群体可识别性分析',
+        'single_identifiability_analysis': '单一可辨识性',
         'stability_analysis': '稳定性分析',
         'special_analysis': '专题分析',
         'select_db': '选择数据库文件...',
@@ -110,6 +112,7 @@ LANGUAGES = {
         'cfa_analysis': 'Confirmatory Factor Analysis (CFA)',
         'identifiability_analysis': 'Identifiability Analysis',
         'group_identifiability_analysis': 'Group Identifiability Analysis',
+        'single_identifiability_analysis': 'Single Identifiability',
         'stability_analysis': 'Stability Analysis',
         'special_analysis': 'Special Analysis',
         'select_db': 'Select Database File...',
@@ -193,6 +196,7 @@ class MainWindow:
             'cfa': CFAPanel(self.right),
             'identifiability': IdentifiabilityPanel(self.right),
             'group_identifiability': GroupIdentifiabilityPanel(self.right),
+            'single_identifiability': SingleIdentifiabilityPanel(self.right),
             'curve_comparison': CurveComparisonPanel(self.right),
             'raw_comparison': RawComparisonPanel(self.right),
             'antialign_comparison': AntialignComparisonPanel(self.right),
@@ -302,6 +306,7 @@ class MainWindow:
         tv.insert('special_analysis', 'end', 'stability', text=lang['stability_analysis'], image='')
         tv.insert('special_analysis', 'end', 'identifiability', text=lang['identifiability_analysis'], image='')
         tv.insert('special_analysis', 'end', 'group_identifiability', text=lang['group_identifiability_analysis'], image='')
+        tv.insert('special_analysis', 'end', 'single_identifiability', text=lang['single_identifiability_analysis'], image='')
         tv.insert('special_analysis', 'end', 'multi_mahalanobis', text=lang['multi_mahalanobis_distance'], image='')
         tv.insert('special_analysis', 'end', 'curve_comparison', text='年龄维度曲线对比 (deepseek)', image='')
         tv.insert('special_analysis', 'end', 'raw_comparison', text='正常生成画像曲线分析', image='')
@@ -333,6 +338,7 @@ class MainWindow:
             'cfa': 'cfa',
             'identifiability': 'identifiability',
             'group_identifiability': 'group_identifiability',
+            'single_identifiability': 'single_identifiability',
             'curve_comparison': 'curve_comparison',
             'raw_comparison': 'raw_comparison',
             'antialign_comparison': 'antialign_comparison',
