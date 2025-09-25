@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import os
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -249,13 +250,36 @@ class IdentifiabilityPanel:
         self.global_xlim = (global_xmin - margin_x, global_xmax + margin_x)
         self.global_ylim = (global_ymin - margin_y, global_ymax + margin_y)
 
-        # Create new figure with fixed subplot sizes using GridSpec
+        # Create new figure with increased spacing and flatter subplots
         num_pairs = len(results)
         cols = min(4, num_pairs)  # Max 4 pairs per row
         rows = (num_pairs + cols - 1) // cols  # Ceiling division
 
-        # Each pair gets 2 subplots (poor above, standard below)
-        self.fig, axes = plt.subplots(rows * 2, cols, figsize=(8 * cols, 6 * rows))
+        # Use GridSpec for better control over spacing and aspect ratio
+        from matplotlib.gridspec import GridSpec
+
+        # Create figure with more height to accommodate increased spacing
+        self.fig = plt.figure(figsize=(8 * cols, 8 * rows))
+
+        # Create GridSpec with more spacing between rows
+        gs = GridSpec(rows * 2, cols, figure=self.fig,
+                     hspace=0.4,  # Increased vertical spacing between subplots
+                     wspace=0.3)  # Horizontal spacing
+
+        # Create axes array for easier access
+        axes = []
+        for i in range(rows * 2):
+            row_axes = []
+            for j in range(cols):
+                if i < rows * 2 and j < cols:
+                    ax = self.fig.add_subplot(gs[i, j])
+                    row_axes.append(ax)
+                else:
+                    row_axes.append(None)
+            axes.append(row_axes)
+
+        # Convert to numpy array for easier indexing
+        axes = np.array(axes)
 
         # Plot each pair
         for i, (pair_key, pair_results) in enumerate(results.items()):
@@ -267,19 +291,21 @@ class IdentifiabilityPanel:
 
             # Poor subplot (top row of the pair)
             poor_row = row_pair * 2
-            if cols > 1:
-                poor_ax = axes[poor_row, col_pair]
+            # Handle single subplot case
+            if rows == 1 and cols == 1:
+                poor_ax = axes[0, 0]
             else:
-                poor_ax = axes[poor_row] if rows * 2 > 1 else axes
-            self._plot_single_result(pair_results['poor'], poor_ax, f"Poor")
+                poor_ax = axes[poor_row, col_pair]
+            self._plot_single_result(pair_results['poor'], poor_ax, f"Pair {persona1}-{persona2} - Poor")
 
             # Standard subplot (bottom row of the pair)
             standard_row = row_pair * 2 + 1
-            if cols > 1:
-                standard_ax = axes[standard_row, col_pair]
+            # Handle single subplot case
+            if rows == 1 and cols == 1:
+                standard_ax = axes[1, 0] if rows * 2 > 1 else axes[0, 0]
             else:
-                standard_ax = axes[standard_row] if rows * 2 > 1 else axes
-            self._plot_single_result(pair_results['standard'], standard_ax, f"Standard")
+                standard_ax = axes[standard_row, col_pair]
+            self._plot_single_result(pair_results['standard'], standard_ax, f"Pair {persona1}-{persona2} - Standard")
 
         # Set main title
         self.fig.suptitle('Identifiability Analysis: Persona Pair Comparison', fontsize=16, fontweight='bold')
@@ -339,7 +365,7 @@ class IdentifiabilityPanel:
         # 统一坐标范围 + 锁定纵横比
         ax.set_xlim(self.global_xlim)
         ax.set_ylim(self.global_ylim)
-        ax.set_aspect(0.7, adjustable='box')  # 扁一点的比例 (高度:宽度 = 0.7:1)
+        ax.set_aspect(0.5, adjustable='box')  # 更扁的比例 (高度:宽度 = 0.5:1)
 
     def _add_global_legend(self):
         """Add a global legend to the figure"""

@@ -36,12 +36,7 @@ class MultiMahalanobisPanel:
         self.show_curves = True  # Default to curves
         self.view_toggle = ttk.Button(button_frame, text="切换为直方图", command=self.toggle_view)
         self.view_toggle.pack(side=tk.LEFT, padx=5)
-        
-        # Toggle Narrative dataset display
-        self.show_narrative = True  # Default to showing narrative
-        self.narrative_toggle = ttk.Button(button_frame, text="隐藏 Narrative", command=self.toggle_narrative)
-        self.narrative_toggle.pack(side=tk.LEFT, padx=5)
-        
+
         # SVG export button
         self.save_button = ttk.Button(button_frame, text="Save to SVG", command=self.save_to_svg, state=tk.DISABLED)
         self.save_button.pack(side=tk.LEFT, padx=5)
@@ -161,18 +156,13 @@ class MultiMahalanobisPanel:
                     ax = axes_flat[i]
                     persona_num = persona_key.replace('persona', '')
 
-                    filtered_results = {}
-                    for source_name, result in persona_results.items():
-                        if self.show_narrative or 'narrative' not in source_name.lower():
-                            filtered_results[source_name] = result
-
                     # Determine common x-range for curves
-                    all_distances = np.concatenate([result['distances_clean'] for result in filtered_results.values()])
+                    all_distances = np.concatenate([result['distances_clean'] for result in persona_results.values()])
                     x_min = np.min(all_distances) - 0.5
                     x_max = np.max(all_distances) + 0.5
                     x = np.linspace(x_min, x_max, 1000)
 
-                    for source_name, result in filtered_results.items():
+                    for source_name, result in persona_results.items():
                         distances = result['distances_clean']
                         color = result['color']
 
@@ -195,12 +185,7 @@ class MultiMahalanobisPanel:
                     ax = axes_flat[i]
                     persona_num = persona_key.replace('persona', '')
 
-                    filtered_results = {}
                     for source_name, result in persona_results.items():
-                        if self.show_narrative or 'narrative' not in source_name.lower():
-                            filtered_results[source_name] = result
-
-                    for source_name, result in filtered_results.items():
                         distances = result['distances_clean']
                         color = result['color']
 
@@ -252,18 +237,17 @@ class MultiMahalanobisPanel:
             self.data_tree.heading(col, text=col)
             self.data_tree.column(col, width=100, anchor='center')
 
-        # Add data for each persona (respect narrative toggle)
+        # Add data for each persona
         for persona_key, persona_results in self.results_by_persona.items():
             persona_num = persona_key.replace('persona', '')
             for source_name, result in persona_results.items():
-                if self.show_narrative or 'narrative' not in source_name.lower():
-                    self.data_tree.insert('', 'end', values=(
-                        f'Persona {persona_num}',
-                        result['label'],
-                        f"{result['cv']:.4f}",
-                        f"{result['kurtosis']:.4f}",
-                        len(result['distances_clean'])
-                    ))
+                self.data_tree.insert('', 'end', values=(
+                    f'Persona {persona_num}',
+                    result['label'],
+                    f"{result['cv']:.4f}",
+                    f"{result['kurtosis']:.4f}",
+                    len(result['distances_clean'])
+                ))
         
         # Add scrollbar
         scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.data_tree.yview)
@@ -315,24 +299,13 @@ class MultiMahalanobisPanel:
         if hasattr(self, 'results_by_persona') and self.results_by_persona:
             self.display_results()
 
-    def toggle_narrative(self):
-        """Toggle Narrative dataset display"""
-        self.show_narrative = not self.show_narrative
-        if self.show_narrative:
-            self.narrative_toggle.config(text="隐藏 Narrative")
-        else:
-            self.narrative_toggle.config(text="显示 Narrative")
-
-        # Redisplay results with new narrative setting
-        if hasattr(self, 'results_by_persona') and self.results_by_persona:
-            self.display_results()
 
     def _calculate_persona_results(self, data_sources, progress_dialog, progress_start, progress_range):
         """Calculate results for a single persona using original logic"""
         results = {}
         total_sources = len(data_sources)
 
-        # First load all data to calculate common statistics (including narrative)
+        # First load all data to calculate common statistics
         all_data = []
         all_labels = []
 
@@ -352,7 +325,7 @@ class MultiMahalanobisPanel:
             progress = progress_start + (i + 1) / total_sources * progress_range / 2  # 50% for loading
             progress_dialog.set_progress(progress)
 
-        # Combine all data and calculate common statistics (including narrative)
+        # Combine all data and calculate common statistics
         combined_data = np.vstack(all_data)
         global_mean = np.mean(combined_data, axis=0)
         global_cov = np.cov(combined_data, rowvar=False)
@@ -393,15 +366,14 @@ class MultiMahalanobisPanel:
         return results
 
     def _get_individual_data_sources(self):
-        """Get data sources from individual directory structure"""
+        """Get data sources from individual directory structure (excluding narrative)"""
         individual_dir = "data/db/backup/individual"
         data_sources = []
 
-        # Define color scheme for different dataset types
+        # Define color scheme for different dataset types (no narrative)
         color_scheme = {
             'poor': 'red',
-            'standard': 'blue',
-            'narrative': 'green'
+            'standard': 'blue'
         }
 
         # Find all persona subdirectories
@@ -415,15 +387,19 @@ class MultiMahalanobisPanel:
         # Sort persona directories numerically
         persona_dirs.sort(key=lambda x: int(x.replace('persona', '')) if x.replace('persona', '').isdigit() else 0)
 
-        # Create data sources for each persona and dataset type
+        # Create data sources for each persona and dataset type (excluding narrative)
         for persona_dir in persona_dirs:
             persona_path = os.path.join(individual_dir, persona_dir)
             persona_num = persona_dir.replace('persona', '')
 
-            # Find all database files in this persona directory
+            # Find all database files in this persona directory (excluding narrative)
             for db_file in os.listdir(persona_path):
                 if db_file.endswith('.db'):
                     dataset_type = db_file.replace('.db', '')
+                    # Skip narrative datasets completely
+                    if dataset_type == 'narrative':
+                        continue
+
                     db_path = os.path.join(persona_path, db_file)
 
                     # Determine color based on dataset type
@@ -478,30 +454,29 @@ class MultiMahalanobisPanel:
 
     def _add_global_legend(self):
         """Add a global legend to the figure"""
-        # 创建图例元素
+        # Create legend elements
         legend_elements = []
 
-        # 数据集类型颜色图例
+        # Dataset type color legend (no narrative)
         color_scheme = {
             'poor': 'red',
-            'standard': 'blue',
-            'narrative': 'green'
+            'standard': 'blue'
         }
 
         for dataset_type, color in color_scheme.items():
             legend_elements.append(Patch(facecolor=color, label=dataset_type.capitalize()))
 
-        # 添加分隔线
+        # Add separator
         legend_elements.append(Patch(facecolor='white', label=''))
 
-        # 视图模式图例
+        # View mode legend
         if self.show_curves:
             legend_elements.append(Line2D([0], [0], color='black', label='KDE Curve', linewidth=2))
         else:
             legend_elements.append(Patch(facecolor='gray', alpha=0.6, label='Histogram'))
 
-        # 添加图例到figure
+        # Add legend to figure
         self.fig.legend(handles=legend_elements, loc='lower center',
-                       bbox_to_anchor=(0.5, 0.02), ncol=5, fontsize='small')
-        # 调整布局以容纳图例
+                       bbox_to_anchor=(0.5, 0.02), ncol=3, fontsize='small')
+        # Adjust layout to accommodate legend
         self.fig.subplots_adjust(bottom=0.15)
