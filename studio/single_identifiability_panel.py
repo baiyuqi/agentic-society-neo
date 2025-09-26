@@ -25,27 +25,27 @@ class SingleIdentifiabilityPanel:
         control_frame = ttk.Frame(self.main)
         control_frame.pack(fill=tk.X, padx=10, pady=10)
 
-        title_label = ttk.Label(control_frame, text="单一可辨识性分析: Poor vs Standard 聚类对比", font=("Helvetica", 14, "bold"))
+        title_label = ttk.Label(control_frame, text="Single Identifiability Analysis: Poor vs Standard Clustering Comparison", font=("Helvetica", 14, "bold"))
         title_label.pack(side=tk.LEFT, padx=(0, 20))
 
         # Persona directory selection
         selection_frame = ttk.Frame(self.main)
         selection_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        ttk.Label(selection_frame, text="选择第一个Persona目录:").pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Label(selection_frame, text="Select First Persona Directory:").pack(side=tk.LEFT, padx=(0, 10))
         self.persona1_path = tk.StringVar()
         ttk.Entry(selection_frame, textvariable=self.persona1_path, width=50).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(selection_frame, text="浏览", command=self.select_persona1).pack(side=tk.LEFT)
+        ttk.Button(selection_frame, text="Browse", command=self.select_persona1).pack(side=tk.LEFT)
 
-        ttk.Label(selection_frame, text="选择第二个Persona目录:").pack(side=tk.LEFT, padx=(20, 10))
+        ttk.Label(selection_frame, text="Select Second Persona Directory:").pack(side=tk.LEFT, padx=(20, 10))
         self.persona2_path = tk.StringVar()
         ttk.Entry(selection_frame, textvariable=self.persona2_path, width=50).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(selection_frame, text="浏览", command=self.select_persona2).pack(side=tk.LEFT)
+        ttk.Button(selection_frame, text="Browse", command=self.select_persona2).pack(side=tk.LEFT)
 
-        self.run_button = ttk.Button(control_frame, text="运行分析", command=self.start_analysis)
+        self.run_button = ttk.Button(control_frame, text="Run Analysis", command=self.start_analysis)
         self.run_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.save_button = ttk.Button(control_frame, text="保存SVG", command=self.save_to_svg, state=tk.DISABLED)
+        self.save_button = ttk.Button(control_frame, text="Save SVG", command=self.save_to_svg, state=tk.DISABLED)
         self.save_button.pack(side=tk.LEFT)
 
         # --- Main Paned Window for Plot and Table ---
@@ -60,10 +60,10 @@ class SingleIdentifiabilityPanel:
         ari_frame = ttk.Frame(self.plot_frame)
         ari_frame.pack(fill=tk.X, pady=(0, 10))
 
-        self.ari_label_samples = ttk.Label(ari_frame, text="Standard聚类ARI: -", font=("Helvetica", 10, "bold"))
+        self.ari_label_samples = ttk.Label(ari_frame, text="Standard Clustering ARI: -", font=("Helvetica", 10, "bold"))
         self.ari_label_samples.pack(side=tk.LEFT, padx=(0, 20))
 
-        self.ari_label_poor = ttk.Label(ari_frame, text="Poor聚类ARI: -", font=("Helvetica", 10, "bold"))
+        self.ari_label_poor = ttk.Label(ari_frame, text="Poor Clustering ARI: -", font=("Helvetica", 10, "bold"))
         self.ari_label_poor.pack(side=tk.LEFT)
 
         # Single figure with subplots and proper aspect ratio
@@ -86,7 +86,7 @@ class SingleIdentifiabilityPanel:
     def select_persona1(self):
         """Select first persona directory"""
         directory = filedialog.askdirectory(
-            title="选择第一个Persona目录",
+            title="Select First Persona Directory",
             initialdir="data/db/backup/individual"
         )
         if directory:
@@ -95,7 +95,7 @@ class SingleIdentifiabilityPanel:
     def select_persona2(self):
         """Select second persona directory"""
         directory = filedialog.askdirectory(
-            title="选择第二个Persona目录",
+            title="Select Second Persona Directory",
             initialdir="data/db/backup/individual"
         )
         if directory:
@@ -107,7 +107,7 @@ class SingleIdentifiabilityPanel:
         persona2_dir = self.persona2_path.get()
 
         if not persona1_dir or not persona2_dir:
-            messagebox.showerror("错误", "请先选择两个Persona目录")
+            messagebox.showerror("Error", "Please select both Persona directories first")
             return
 
         # Check if required database files exist
@@ -118,16 +118,16 @@ class SingleIdentifiabilityPanel:
 
         missing_files = []
         for file_path, desc in [
-            (persona1_poor, "第一个Persona的poor.db"),
-            (persona1_standard, "第一个Persona的standard.db"),
-            (persona2_poor, "第二个Persona的poor.db"),
-            (persona2_standard, "第二个Persona的standard.db")
+            (persona1_poor, "First Persona's poor.db"),
+            (persona1_standard, "First Persona's standard.db"),
+            (persona2_poor, "Second Persona's poor.db"),
+            (persona2_standard, "Second Persona's standard.db")
         ]:
             if not os.path.exists(file_path):
                 missing_files.append(desc)
 
         if missing_files:
-            messagebox.showerror("错误", f"以下数据库文件不存在:\n" + "\n".join(missing_files))
+            messagebox.showerror("Error", f"The following database files do not exist:\n" + "\n".join(missing_files))
             return
 
         # --- Analysis Task Definition ---
@@ -135,12 +135,12 @@ class SingleIdentifiabilityPanel:
             results = {}
 
             # Analyze Poor samples (poor vs poor)
-            progress_dialog.update_message("分析Poor样本聚类...")
+            progress_dialog.update_message("Analyzing Poor sample clustering...")
             results['poor'] = self._run_poor_analysis(persona1_poor, persona2_poor)
             if progress_dialog.is_cancelled(): return None
 
             # Analyze Standard samples (standard vs standard)
-            progress_dialog.update_message("分析Standard样本聚类...")
+            progress_dialog.update_message("Analyzing Standard sample clustering...")
             results['standard'] = self._run_standard_analysis(persona1_standard, persona2_standard)
             if progress_dialog.is_cancelled(): return None
 
@@ -152,12 +152,12 @@ class SingleIdentifiabilityPanel:
                 if results.get('standard'):
                     self.display_results(
                         results['standard'], self.ax_samples,
-                        self.ari_label_samples, "Standard vs Standard 聚类"
+                        self.ari_label_samples, "Standard vs Standard Clustering"
                     )
                 if results.get('poor'):
                     self.display_results(
                         results['poor'], self.ax_poor,
-                        self.ari_label_poor, "Poor vs Poor 聚类"
+                        self.ari_label_poor, "Poor vs Poor Clustering"
                     )
                 # Enable save button and redraw canvas
                 self.save_button.config(state=tk.NORMAL)
@@ -166,12 +166,12 @@ class SingleIdentifiabilityPanel:
                 self.display_statistics_table(results)
 
         def on_error(error):
-            messagebox.showerror("分析错误", f"分析过程中出现错误: {error}")
+            messagebox.showerror("Analysis Error", f"An error occurred during analysis: {error}")
 
         self.progress_manager.run_with_progress(
             analysis_task,
-            title="单一可辨识性分析",
-            message="准备中...",
+            title="Single Identifiability Analysis",
+            message="Preparing...",
             success_callback=on_success,
             error_callback=on_error
         )
@@ -353,15 +353,15 @@ class SingleIdentifiabilityPanel:
     def save_to_svg(self):
         """Save the combined matplotlib figure as SVG vector image"""
         if self.fig is None:
-            messagebox.showwarning("无图表", "请先运行分析生成图表")
+            messagebox.showwarning("No Chart", "Please run analysis first to generate charts")
             return
 
         file_path = filedialog.asksaveasfilename(
-            title="保存对比图表为SVG",
+            title="Save Comparison Chart as SVG",
             defaultextension=".svg",
             filetypes=[("SVG Files", "*.svg"), ("All Files", "*.*")]
         )
 
         if file_path:
             self.fig.savefig(file_path, format="svg", bbox_inches="tight")
-            messagebox.showinfo("成功", f"对比图表已成功保存到:\n{file_path}")
+            messagebox.showinfo("Success", f"Comparison chart successfully saved to:\n{file_path}")

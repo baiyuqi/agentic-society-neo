@@ -122,10 +122,13 @@ class MultiMahalanobisPanel:
             num_personas = len(self.results_by_persona)
 
             # Calculate grid dimensions
-            cols = min(4, num_personas)  # Max 4 columns per row
+            cols = min(3, num_personas)  # Max 3 columns per row
             rows = (num_personas + cols - 1) // cols  # Ceiling division
 
             self.fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 6 * rows))
+
+            # Adjust spacing between subplots to prevent text overlap
+            self.fig.subplots_adjust(wspace=0.4, hspace=0.3)
 
             # Create flat list of axes for easier iteration
             axes_flat = []
@@ -144,8 +147,18 @@ class MultiMahalanobisPanel:
                     for j in range(cols):
                         axes_flat.append(axes[i, j])
 
-            # Remove axes beyond the number of personas
+            # Remove axes beyond the number of personas and hide empty subplots
             axes_flat = axes_flat[:num_personas]
+
+            # Hide subplots that don't have data
+            for ax in axes_flat:
+                ax.set_visible(True)
+
+            # Hide empty subplots in the grid
+            if hasattr(axes, 'flat'):
+                for ax in axes.flat:
+                    if ax not in axes_flat:
+                        ax.set_visible(False)
             
             if self.show_curves:
                 # Plot smooth distribution curves for each dataset
