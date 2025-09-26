@@ -259,19 +259,19 @@ class IdentifiabilityPanel:
 
         # Create new figure with increased spacing and flatter subplots
         num_pairs = len(results)
-        cols = min(4, num_pairs)  # Max 4 pairs per row
+        cols = min(5, num_pairs)  # Max 5 pairs per row
         rows = (num_pairs + cols - 1) // cols  # Ceiling division
 
         # Use GridSpec for better control over spacing and aspect ratio
         from matplotlib.gridspec import GridSpec
 
-        # Create figure with more height to accommodate increased spacing
-        self.fig = plt.figure(figsize=(8 * cols, 8 * rows))
+        # Create figure with increased height for 5-column layout
+        self.fig = plt.figure(figsize=(6 * cols, 8 * rows))
 
-        # Create GridSpec with more spacing between rows
+        # Create GridSpec with reduced spacing between rows
         gs = GridSpec(rows * 2, cols, figure=self.fig,
-                     hspace=0.4,  # Increased vertical spacing between subplots
-                     wspace=0.3)  # Horizontal spacing
+                     hspace=0.1,  # Reduced vertical spacing between subplots
+                     wspace=0.1)  # Reduced horizontal spacing
 
         # Create axes array for easier access
         axes = []
@@ -303,7 +303,9 @@ class IdentifiabilityPanel:
                 poor_ax = axes[0, 0]
             else:
                 poor_ax = axes[poor_row, col_pair]
-            self._plot_single_result(pair_results['poor'], poor_ax, f"Pair {persona1}-{persona2} - Poor")
+            # Only show labels for the first subplot (poor)
+            show_labels = (i == 0 and row_pair == 0 and col_pair == 0)
+            self._plot_single_result(pair_results['poor'], poor_ax, f"Pair {persona1}-{persona2} - Poor", show_labels=show_labels)
 
             # Standard subplot (bottom row of the pair)
             standard_row = row_pair * 2 + 1
@@ -312,7 +314,8 @@ class IdentifiabilityPanel:
                 standard_ax = axes[1, 0] if rows * 2 > 1 else axes[0, 0]
             else:
                 standard_ax = axes[standard_row, col_pair]
-            self._plot_single_result(pair_results['standard'], standard_ax, f"Pair {persona1}-{persona2} - Standard")
+            # Never show labels for standard subplots
+            self._plot_single_result(pair_results['standard'], standard_ax, f"Pair {persona1}-{persona2} - Standard", show_labels=False)
 
         # Set main title
         self.fig.suptitle('Identifiability Analysis: Persona Pair Comparison', fontsize=16, fontweight='bold')
@@ -327,7 +330,7 @@ class IdentifiabilityPanel:
         # Display statistics table
         self.display_statistics_table(results)
 
-    def _plot_single_result(self, result, ax, title):
+    def _plot_single_result(self, result, ax, title, show_labels=True):
         """Plot a single analysis result on the given axis"""
         ax.clear()
 
@@ -348,7 +351,7 @@ class IdentifiabilityPanel:
             if label == 0:  # 左侧persona
                 markers.append('o')  # 圆形
             else:  # 右侧persona
-                markers.append('^')  # 三角形
+                markers.append('+')  # 十字花
 
         plot_df['Marker'] = markers
 
@@ -357,22 +360,31 @@ class IdentifiabilityPanel:
         for cluster_num in set(plot_df['Predicted Cluster']):
             cluster_idx = int(cluster_num.replace('Cluster ', '')) - 1
             cluster_data = plot_df[plot_df['Predicted Cluster'] == cluster_num]
-            for marker_type in ['o', '^']:
+            for marker_type in ['o', '+']:
                 marker_data = cluster_data[cluster_data['Marker'] == marker_type]
                 if len(marker_data) > 0:
                     ax.scatter(marker_data['PC1'], marker_data['PC2'],
-                             c=[cluster_colors[cluster_idx]], s=80, alpha=0.7,
+                             c=[cluster_colors[cluster_idx]], s=27, alpha=0.7,
                              edgecolors='black', linewidths=0.5, marker=marker_type)
 
         ax.set_title(f"{title}", pad=10)  # Add padding to prevent overlap
-        ax.set_xlabel('PC 1', labelpad=5)   # Add padding to axis labels
-        ax.set_ylabel('PC 2', labelpad=5)
+
+        if show_labels:
+            ax.set_xlabel('PC 1', labelpad=5)   # Add padding to axis labels
+            ax.set_ylabel('PC 2', labelpad=5)
+        else:
+            # Remove axis labels and ticks to save space
+            ax.set_xlabel('')
+            ax.set_ylabel('')
+            ax.tick_params(axis='both', which='both', bottom=False, top=False,
+                          left=False, right=False, labelbottom=False, labelleft=False)
+
         ax.grid(True, which='both', linestyle='--', linewidth=0.5)
 
         # 统一坐标范围 + 锁定纵横比
         ax.set_xlim(self.global_xlim)
         ax.set_ylim(self.global_ylim)
-        ax.set_aspect(0.5, adjustable='box')  # 更扁的比例 (高度:宽度 = 0.5:1)
+        ax.set_aspect(1.0, adjustable='box')  # 正方形比例 (高度:宽度 = 1:1)
 
     def _add_global_legend(self):
         """Add a global legend to the figure"""
@@ -397,9 +409,9 @@ class IdentifiabilityPanel:
         # Add legend to figure with optimized column layout
         # For 2 personas and 2 clusters, use 2 columns for better grouping
         self.fig.legend(handles=legend_elements, loc='lower center',
-                       bbox_to_anchor=(0.5, 0.02), ncol=2, fontsize='small')
-        # Adjust layout to accommodate legend with more space
-        self.fig.subplots_adjust(bottom=0.20)
+                       bbox_to_anchor=(0.5, 0.01), ncol=2, fontsize='small')
+        # Adjust layout to reduce edge margins
+        self.fig.subplots_adjust(bottom=0.10, top=0.95, left=0.05, right=0.95)
 
     def display_statistics_table(self, results):
         """Display identifiability analysis results in a table"""
