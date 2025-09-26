@@ -403,7 +403,7 @@ class IdentifiabilityPanel:
         from matplotlib.lines import Line2D
         legend_elements.append(Line2D([0], [0], marker='o', color='black', label='Persona 1',
                                      markersize=8, linestyle='None'))
-        legend_elements.append(Line2D([0], [0], marker='^', color='black', label='Persona 2',
+        legend_elements.append(Line2D([0], [0], marker='+', color='black', label='Persona 2',
                                      markersize=8, linestyle='None'))
 
         # Add legend to figure with optimized column layout
