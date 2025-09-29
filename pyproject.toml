@@ -1,0 +1,47 @@
+[tool.poetry]
+name = "agentic-society"
+version = "0.1.0"
+description = "This repo is to support our work in applying language model agents in the research of social and economic discipline."
+authors = ["baiyuqi"]
+readme = "README.md"
+package-mode=false
+
+[tool.poetry.dependencies]
+python = ">=3.10.0,<3.13"
+duckduckgo_search = "^5.3.0"
+pyjwt = "^2.8.0"
+httpx_sse = "^0.4.0"
+ipython = "^8.24.0"
+matplot = "^0.1.9"
+pandas = "^2.2.2"
+psycopg2 = "^2.9.9"
+sqlalchemy = "^2.0.30"
+pandastable = "^0.13.1"
+plotext = "^5.2.8"
+scikit-learn = "^1.5.0"
+seaborn = "^0.13.2"
+tqdm = "^4.67.1"
+langchain = "^0.3.26"
+langchain-community = "^0.3.27"
+datasets = "^2.0.0"
+langchain-openai = "^0.3.28"
+markdown = "^3.8.2"
+tkhtmlview = "^0.3.1"
+pingouin = "^0.5.5"
+matplotlib = "^3.10.3"
+factor-analyzer = "^0.5.1"
+ttkthemes = "^3.2.2"
+semopy = "^2.3.11"
+requests = "^2.32.4"
+wikipedia-api = "^0.8.1"
+flask = "^3.1.2"
+
+[tool.poetry.scripts]
+std = "studio.astudio:main"
+
+[tool.poetry.group.dev.dependencies]
+vulture = "^2.14"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

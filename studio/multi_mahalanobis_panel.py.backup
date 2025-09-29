@@ -1,0 +1,422 @@
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.patches import Patch
+
+from asociety.personality.analysis_utils import calculate_single_profile_mahalanobis
+from studio.progress_dialog import ProgressManager
+
+class MultiMahalanobisPanel:
+    def __init__(self, parent):
+        self.main = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
+        
+        main_content_frame = ttk.Frame(self.main)
+        self.main.add(main_content_frame, weight=3)
+        
+        # Control frame
+        control_frame = ttk.Frame(main_content_frame)
+        control_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        title_label = ttk.Label(control_frame, text="多数据源马氏距离对比分析", font=("Helvetica", 14, "bold"))
+        title_label.pack(pady=10)
+        
+        # Create horizontal frame for buttons
+        button_frame = ttk.Frame(control_frame)
+        button_frame.pack(pady=5)
+        
+        self.run_button = ttk.Button(button_frame, text="运行分析", command=self.start_analysis)
+        self.run_button.pack(side=tk.LEFT, padx=5)
+        
+        # Toggle between histogram and curve view
+        self.show_curves = True  # Default to curves
+        self.view_toggle = ttk.Button(button_frame, text="切换为直方图", command=self.toggle_view)
+        self.view_toggle.pack(side=tk.LEFT, padx=5)
+        
+        # Toggle Narrative dataset display
+        self.show_narrative = True  # Default to showing narrative
+        self.narrative_toggle = ttk.Button(button_frame, text="隐藏 Narrative", command=self.toggle_narrative)
+        self.narrative_toggle.pack(side=tk.LEFT, padx=5)
+        
+        # SVG export button
+        self.save_button = ttk.Button(button_frame, text="Save to SVG", command=self.save_to_svg, state=tk.DISABLED)
+        self.save_button.pack(side=tk.LEFT, padx=5)
+        
+        # Persona selection dropdown
+        persona_frame = ttk.Frame(control_frame)
+        persona_frame.pack(pady=5)
+        
+        ttk.Label(persona_frame, text="选择Persona:").pack(side=tk.LEFT, padx=(0, 5))
+        self.persona_var = tk.StringVar(value="1")
+        self.persona_combo = ttk.Combobox(persona_frame, textvariable=self.persona_var, 
+                                        values=["1", "2"], width=5, state='readonly')
+        self.persona_combo.pack(side=tk.LEFT)
+        self.persona_combo.bind('<<ComboboxSelected>>', self.on_persona_change)
+        
+        # Data sources templates (will be updated with selected persona)
+        self.data_source_templates = [
+            {
+                'name': 'poor300',
+                'template': 'data/db/backup/poor300/deepseek-chat-single-poor-{}-300.db',
+                'color': 'red',
+                'label': 'Poor Quality'
+            },
+            {
+                'name': 'samples300', 
+                'template': 'data/db/backup/samples300/deepseek-chat-single-{}-300.db',
+                'color': 'blue',
+                'label': 'Standard Sample'
+            },
+            {
+                'name': 'narrative300',
+                'template': 'data/db/backup/samples-narrative300/deepseek-chat-single-{}-300-narra.db',
+                'color': 'green', 
+                'label': 'Narrative'
+            }
+        ]
+        
+        # Initialize data sources with current persona
+        self.data_sources = self._update_data_sources_paths("1")
+        
+        # Create paned window for plot and table
+        self.results_paned_window = ttk.PanedWindow(main_content_frame, orient=tk.VERTICAL)
+        self.results_paned_window.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Plot frame (top 70%)
+        self.plot_frame = ttk.Frame(self.results_paned_window)
+        self.results_paned_window.add(self.plot_frame, weight=7)
+        
+        # Table frame (bottom 30%)
+        self.table_frame = ttk.Frame(self.results_paned_window)
+        self.results_paned_window.add(self.table_frame, weight=3)
+        
+        self.fig = None
+        self.canvas = None
+        self.data_tree = None
+        self.progress_manager = ProgressManager(self.main)
+        
+        self.results = {}
+
+    def start_analysis(self):
+        def analysis_task(progress_dialog):
+            results = {}
+            total_sources = len(self.data_sources)
+            
+            # First load all data to calculate common statistics
+            progress_dialog.update_message("正在加载所有数据集...")
+            all_data = []
+            all_labels = []
+            
+            for i, source in enumerate(self.data_sources):
+                if not os.path.exists(source['path']):
+                    raise FileNotFoundError(f"数据库文件不存在: {source['path']}")
+                
+                # Load personality data
+                from asociety.personality.analysis_utils import load_personality_data
+                df = load_personality_data(source['path'])
+                trait_columns = ['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism']
+                vectors = df[trait_columns].values
+                
+                all_data.append(vectors)
+                all_labels.extend([source['label']] * len(vectors))
+                
+                progress = (i + 1) / total_sources * 50  # 50% for loading
+                progress_dialog.set_progress(progress)
+            
+            # Combine all data and calculate common statistics
+            combined_data = np.vstack(all_data)
+            global_mean = np.mean(combined_data, axis=0)
+            global_cov = np.cov(combined_data, rowvar=False)
+            
+            # Add regularization to ensure invertibility
+            regularization = 1e-6
+            global_cov += np.eye(global_cov.shape[0]) * regularization
+            global_inv_cov = np.linalg.inv(global_cov)
+            
+            # Now calculate Mahalanobis distances using common reference
+            for i, (source, data) in enumerate(zip(self.data_sources, all_data)):
+                progress_dialog.update_message(f"正在计算 {source['label']} 的距离...")
+                
+                if progress_dialog.is_cancelled():
+                    return None
+                
+                # Calculate Mahalanobis distances relative to global distribution
+                delta = data - global_mean
+                mahalanobis_sq_dist = np.sum((delta @ global_inv_cov) * delta, axis=1)
+                distances = np.sqrt(mahalanobis_sq_dist)
+                
+                # Remove outliers and calculate statistics
+                distances_clean = self._remove_outliers_iqr(distances)
+                cv, kurtosis = self._calculate_statistical_metrics(distances_clean)
+                
+                results[source['name']] = {
+                    'distances': distances,
+                    'distances_clean': distances_clean,
+                    'cv': cv,
+                    'kurtosis': kurtosis,
+                    'color': source['color'],
+                    'label': source['label']
+                }
+                
+                progress = 50 + (i + 1) / total_sources * 50  # Remaining 50% for calculation
+                progress_dialog.set_progress(progress)
+            
+            return results
+
+        def on_success(results):
+            if results:
+                self.results = results
+                self.display_results()
+
+        def on_error(error):
+            messagebox.showerror("分析错误", f"发生错误: {error}")
+
+        self.progress_manager.run_with_progress(
+            analysis_task,
+            title="多数据源分析中...",
+            message="正在准备分析...",
+            success_callback=on_success,
+            error_callback=on_error
+        )
+
+    def display_results(self):
+        try:
+            # Check if we have results to display
+            if not hasattr(self, 'results') or not self.results:
+                return
+            
+            # Clear previous plot
+            if self.canvas:
+                self.canvas.get_tk_widget().destroy()
+            if self.data_tree:
+                self.data_tree.destroy()
+
+            # Create figure
+            self.fig, ax = plt.subplots(figsize=(12, 8))
+            
+            if self.show_curves:
+                # Plot smooth distribution curves for each dataset
+                from scipy.stats import gaussian_kde
+                
+                # Filter results based on narrative toggle
+                filtered_results = {}
+                for source_name, result in self.results.items():
+                    if self.show_narrative or 'narrative' not in source_name.lower():
+                        filtered_results[source_name] = result
+                
+                # Determine common x-range for all curves
+                all_distances = np.concatenate([result['distances_clean'] for result in filtered_results.values()])
+                x_min = np.min(all_distances) - 0.5
+                x_max = np.max(all_distances) + 0.5
+                x = np.linspace(x_min, x_max, 1000)
+                
+                for source_name, result in filtered_results.items():
+                    distances = result['distances_clean']
+                    color = result['color']
+                    label = result['label']
+                    
+                    # Create kernel density estimate for smooth curve
+                    if len(distances) > 1:
+                        kde = gaussian_kde(distances)
+                        y = kde(x)
+                        
+                        # Plot smooth curve
+                        ax.plot(x, y, color=color, linewidth=2, label=label)
+                        
+                        # Fill under curve for better visibility
+                        ax.fill_between(x, y, alpha=0.3, color=color)
+                
+                ax.set_title('Multiple Data Sources Mahalanobis Distance Distribution (KDE)')
+                ax.legend()  # Add legend for curve view
+            else:
+                # Plot histograms for each dataset
+                legend_elements = []
+                
+                # Filter results based on narrative toggle
+                filtered_results = {}
+                for source_name, result in self.results.items():
+                    if self.show_narrative or 'narrative' not in source_name.lower():
+                        filtered_results[source_name] = result
+                
+                for source_name, result in filtered_results.items():
+                    distances = result['distances_clean']
+                    color = result['color']
+                    label = result['label']
+                    
+                    # Plot histogram
+                    counts, bin_edges, _ = ax.hist(
+                        distances, bins='auto', density=True, alpha=0.6, 
+                        color=color, edgecolor='black', label=label
+                    )
+                    
+                    legend_elements.append(Patch(color=color, label=label))
+                
+                ax.set_title('Multiple Data Sources Mahalanobis Distance Distribution (Histogram)')
+                ax.legend(handles=legend_elements)
+            
+            ax.set_xlabel('Mahalanobis Distance')
+            ax.set_ylabel('Probability Density')
+            ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+            
+            # Add statistical annotations (respect narrative toggle)
+            stats_text = []
+            for source_name, result in self.results.items():
+                if self.show_narrative or 'narrative' not in source_name.lower():
+                    stats_text.append(
+                        f"{result['label']}: CV={result['cv']:.3f}, Kurtosis={result['kurtosis']:.3f}"
+                    )
+            
+            # Add text box with statistics
+            stats_str = '\n'.join(stats_text)
+            ax.text(0.02, 0.98, stats_str, transform=ax.transAxes, fontsize=10,
+                   verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+            
+            # Create canvas
+            self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+            self.canvas.draw()
+            self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            
+            # Create statistics table
+            self.display_statistics_table()
+            
+            # Enable SVG export
+            self.save_button.config(state=tk.NORMAL)
+            
+        except Exception as e:
+            messagebox.showerror("显示错误", f"显示结果时出错: {e}")
+
+    def display_statistics_table(self):
+        """Display statistics table with variation coefficient and kurtosis."""
+        cols = ['Data Source', 'Variation Coefficient', 'Kurtosis', 'Sample Count']
+        self.data_tree = ttk.Treeview(self.table_frame, columns=cols, show='headings', height=5)
+        
+        for col in cols:
+            self.data_tree.heading(col, text=col)
+            self.data_tree.column(col, width=120, anchor='center')
+        
+        # Add data (respect narrative toggle)
+        for source_name, result in self.results.items():
+            if self.show_narrative or 'narrative' not in source_name.lower():
+                self.data_tree.insert('', 'end', values=(
+                    result['label'],
+                    f"{result['cv']:.4f}",
+                    f"{result['kurtosis']:.4f}",
+                    len(result['distances_clean'])
+                ))
+        
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.data_tree.yview)
+        self.data_tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side='right', fill='y')
+        self.data_tree.pack(fill=tk.BOTH, expand=True)
+
+    def _remove_outliers_iqr(self, data):
+        """Remove outliers using Interquartile Range method."""
+        if len(data) < 4:
+            return data
+            
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+        
+        return data[(data >= lower_bound) & (data <= upper_bound)]
+
+    def _calculate_statistical_metrics(self, data):
+        """Calculate variation coefficient and kurtosis."""
+        if len(data) < 2:
+            return 0.0, 0.0
+            
+        mean = np.mean(data)
+        std = np.std(data)
+        
+        # Variation coefficient
+        cv = std / mean if mean != 0 else 0.0
+        
+        # Kurtosis (Fisher's definition)
+        if len(data) >= 4 and std > 0:
+            kurtosis = np.mean(((data - mean) / std) ** 4) - 3
+        else:
+            kurtosis = 0.0
+            
+        return cv, kurtosis
+
+    def toggle_view(self):
+        """Toggle between curve and histogram view"""
+        self.show_curves = not self.show_curves
+        if self.show_curves:
+            self.view_toggle.config(text="切换为直方图")
+        else:
+            self.view_toggle.config(text="切换为曲线")
+        
+        # Redisplay results with new view mode
+        if hasattr(self, 'results') and self.results:
+            self.display_results()
+
+    def toggle_narrative(self):
+        """Toggle Narrative dataset display"""
+        self.show_narrative = not self.show_narrative
+        if self.show_narrative:
+            self.narrative_toggle.config(text="隐藏 Narrative")
+        else:
+            self.narrative_toggle.config(text="显示 Narrative")
+        
+        # Redisplay results with new narrative setting
+        if hasattr(self, 'results') and self.results:
+            self.display_results()
+
+    def _update_data_sources_paths(self, persona_number):
+        """Update data source paths with the selected persona number"""
+        updated_sources = []
+        for template in self.data_source_templates:
+            updated_source = template.copy()
+            updated_source['path'] = template['template'].format(persona_number)
+            updated_sources.append(updated_source)
+        return updated_sources
+
+    def on_persona_change(self, event=None):
+        """Handle persona selection change"""
+        persona_number = self.persona_var.get()
+        self.data_sources = self._update_data_sources_paths(persona_number)
+        
+        # Clear any existing results
+        if hasattr(self, 'results'):
+            self.results = {}
+        
+        # Clear display
+        if hasattr(self, 'canvas') and self.canvas:
+            self.canvas.get_tk_widget().destroy()
+            self.canvas = None
+        if hasattr(self, 'data_tree') and self.data_tree:
+            self.data_tree.destroy()
+            self.data_tree = None
+        
+        print(f"Switched to persona {persona_number}")
+        for source in self.data_sources:
+            print(f"  {source['label']}: {source['path']}")
+
+    def set_language(self, lang):
+        pass
+
+    def setData(self, data, update_callback):
+        pass
+
+    def save_to_svg(self):
+        """Save the current matplotlib figure as SVG vector image"""
+        if self.fig is None:
+            messagebox.showwarning("No Plot", "Please run analysis first to generate a plot.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            title="Save Plot as SVG",
+            defaultextension=".svg",
+            filetypes=[("SVG Files", "*.svg"), ("All Files", "*.*")]
+        )
+        
+        if file_path:
+            self.fig.savefig(file_path, format="svg", bbox_inches="tight")
+            messagebox.showinfo("Success", f"Plot saved successfully to:\n{file_path}")

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>马氏距离收敛性分析 - Agentic Society</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+        }
+        .chart-container {
+            position: relative;
+            min-height: 400px;
+            margin-bottom: 20px;
+        }
+        .control-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        /* Results styling */
+        .results-section {
+            margin-top: 20px;
+        }
+        .metric-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .metric-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .stats-table {
+            font-size: 0.85rem;
+        }
+        .stats-table th {
+            background-color: #e9ecef;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container-fluid">
+            <!-- Header -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-graph-up-arrow me-2"></i>马氏距离收敛性分析</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Control Panel -->
+                    <div class="control-panel">
+                        <!-- Analysis Info -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <h6><i class="bi bi-info-circle me-2"></i>专题分析说明</h6>
+                                    <p class="mb-0">
+                                        本分析使用预设的数据源模板，对比Persona 1和Persona 2在不同数据源下的马氏距离收敛性。
+                                        数据源包括：Poor Quality (poor300)、Standard Sample (samples300)、Narrative (narrative300)。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Analysis Controls -->
+                        <div class="row mt-3">
+                            <div class="col-md-8">
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-primary" @click="runAnalysis" :disabled="loading">
+                                        <i class="bi bi-play-circle me-1"></i>运行分析
+                                    </button>
+                                    <button class="btn btn-outline-secondary" @click="toggleView" :disabled="!analysisComplete">
+                                        <i class="bi bi-arrow-repeat me-1"></i>{{ showCurves ? '切换为直方图' : '切换为曲线' }}
+                                    </button>
+                                    <button class="btn btn-outline-info" @click="toggleNarrative" :disabled="!analysisComplete">
+                                        <i class="bi bi-eye me-1"></i>{{ showNarrative ? '隐藏 Narrative' : '显示 Narrative' }}
+                                    </button>
+                                    <button class="btn btn-outline-success" @click="forceRedrawChart" :disabled="!analysisComplete">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>重绘图表
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">分析状态:</label>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge" :class="analysisStatus.class">
+                                        {{ analysisStatus.text }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="loading" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2">正在分析多数据源马氏距离...</p>
+                    </div>
+
+                    <div v-else-if="error" class="alert alert-danger">
+                        {{ error }}
+                    </div>
+
+                    <!-- Analysis Results -->
+                    <div v-if="analysisComplete" class="results-section">
+                        <!-- Dual Chart Visualization -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="bi bi-scatter-chart me-2"></i>马氏距离收敛性分析结果</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="chart-container">
+                                            <canvas id="persona1Chart"></canvas>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="chart-container">
+                                            <canvas id="persona2Chart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Statistics Table -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6><i class="bi bi-table me-2"></i>统计指标</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped stats-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Persona</th>
+                                                <th>数据源</th>
+                                                <th>变异系数 (CV)</th>
+                                                <th>峰度</th>
+                                                <th>样本数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(result, sourceName) in filteredResults.persona1" :key="'p1-' + sourceName">
+                                                <td><strong>{{ persona1Name }}</strong></td>
+                                                <td>{{ result.label }}</td>
+                                                <td><strong>{{ result.cv.toFixed(4) }}</strong></td>
+                                                <td><strong>{{ result.kurtosis.toFixed(4) }}</strong></td>
+                                                <td>{{ result.sample_count }}</td>
+                                            </tr>
+                                            <tr v-for="(result, sourceName) in filteredResults.persona2" :key="'p2-' + sourceName">
+                                                <td><strong>{{ persona2Name }}</strong></td>
+                                                <td>{{ result.label }}</td>
+                                                <td><strong>{{ result.cv.toFixed(4) }}</strong></td>
+                                                <td><strong>{{ result.kurtosis.toFixed(4) }}</strong></td>
+                                                <td>{{ result.sample_count }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Analysis Summary -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6><i class="bi bi-info-circle me-2"></i>分析说明</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>数据源说明:</h6>
+                                        <ul class="list-group">
+                                            <li class="list-group-item">
+                                                <span class="badge bg-danger me-2">Poor Quality</span>
+                                                低质量数据源 (poor300)
+                                            </li>
+                                            <li class="list-group-item">
+                                                <span class="badge bg-primary me-2">Standard Sample</span>
+                                                标准样本数据源 (samples300)
+                                            </li>
+                                            <li class="list-group-item">
+                                                <span class="badge bg-success me-2">Narrative</span>
+                                                叙事风格数据源 (narrative300)
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>统计指标解释:</h6>
+                                        <p class="text-muted">
+                                            <strong>变异系数 (CV):</strong> 标准差与均值的比值，衡量数据的相对离散程度。CV越小表示数据越稳定。<br>
+                                            <strong>峰度:</strong> 衡量数据分布的尖锐程度。正峰度表示分布比正态分布更尖锐，负峰度表示更平坦。<br>
+                                            <strong>马氏距离:</strong> 考虑协方差结构的多元距离度量，用于衡量样本与分布中心的距离。
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="text-center text-muted mt-5">
+                        <i class="bi bi-graph-up-arrow display-4"></i>
+                        <p class="mt-3">点击"运行分析"开始多数据源马氏距离收敛性分析</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+
+        const app = createApp({
+            setup() {
+                const loading = ref(false);
+                const error = ref(null);
+                const analysisComplete = ref(false);
+                const showCurves = ref(true);
+                const showNarrative = ref(true);
+                const results = ref({});
+                const persona1Name = ref('Persona 1');
+                const persona2Name = ref('Persona 2');
+                const chartObject1 = ref(null);
+                const chartObject2 = ref(null);
+
+                // 分析状态计算属性
+                const analysisStatus = computed(() => {
+                    if (loading.value) {
+                        return { text: '分析中...', class: 'bg-warning' };
+                    } else if (analysisComplete.value) {
+                        return { text: '分析完成', class: 'bg-success' };
+                    } else {
+                        return { text: '准备分析', class: 'bg-info' };
+                    }
+                });
+
+                // 过滤结果（根据Narrative显示设置）
+                const filteredResults = computed(() => {
+                    const filtered = {
+                        persona1: {},
+                        persona2: {}
+                    };
+
+                    if (results.value.persona1) {
+                        for (const [sourceName, result] of Object.entries(results.value.persona1)) {
+                            if (showNarrative.value || !sourceName.includes('narrative')) {
+                                filtered.persona1[sourceName] = result;
+                            }
+                        }
+                    }
+
+                    if (results.value.persona2) {
+                        for (const [sourceName, result] of Object.entries(results.value.persona2)) {
+                            if (showNarrative.value || !sourceName.includes('narrative')) {
+                                filtered.persona2[sourceName] = result;
+                            }
+                        }
+                    }
+
+                    return filtered;
+                });
+
+                const resetAnalysis = () => {
+                    analysisComplete.value = false;
+                    destroyCharts();
+                };
+
+                const runAnalysis = async () => {
+                    try {
+                        loading.value = true;
+                        error.value = null;
+                        analysisComplete.value = false;
+                        destroyCharts();
+
+                        // 确保ChartJS库已加载
+                        if (typeof Chart === 'undefined') {
+                            throw new Error('ChartJS库未正确加载，请刷新页面重试');
+                        }
+
+                        // 调用后端API进行分析（不需要传递参数，使用预设数据源）
+                        const response = await fetch('/api/analysis/multi_mahalanobis', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({}) // 空对象，使用预设数据源
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || '多数据源马氏距离分析失败');
+                        }
+
+                        const result = await response.json();
+
+                        // 更新数据
+                        results.value = result;
+
+                        // 等待一小段时间确保DOM完全渲染
+                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        // 渲染图表
+                        renderCharts(result);
+                        analysisComplete.value = true;
+
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const renderCharts = (result) => {
+                    destroyCharts();
+
+                    // 渲染Persona 1图表
+                    renderSingleChart('persona1Chart', result.persona1, result.persona1_name, chartObject1);
+                    // 渲染Persona 2图表
+                    renderSingleChart('persona2Chart', result.persona2, result.persona2_name, chartObject2);
+                };
+
+                const renderSingleChart = (canvasId, personaResults, personaName, chartObject) => {
+                    const createChartWithRetry = (retryCount = 0) => {
+                        const ctx = document.getElementById(canvasId);
+                        if (!ctx) {
+                            console.log('Canvas element not found, retrying...');
+                            if (retryCount < 3) {
+                                setTimeout(() => createChartWithRetry(retryCount + 1), 100);
+                            }
+                            return;
+                        }
+
+                        try {
+                            // 过滤结果（根据Narrative显示设置）
+                            const filteredResults = {};
+                            for (const [sourceName, result] of Object.entries(personaResults)) {
+                                if (showNarrative.value || !sourceName.includes('narrative')) {
+                                    filteredResults[sourceName] = result;
+                                }
+                            }
+
+                            // 准备数据
+                            const datasets = [];
+                            const colors = {
+                                'poor300': '#ff7f0e',
+                                'samples300': '#2ca02c',
+                                'narrative300': '#d62728'
+                            };
+
+                            if (showCurves.value) {
+                                // 曲线视图：使用KDE平滑曲线
+                                for (const [sourceName, result] of Object.entries(filteredResults)) {
+                                    const distances = result.distances_clean;
+                                    if (distances.length > 1) {
+                                        // 创建KDE数据点
+                                        const xMin = Math.min(...distances) - 0.5;
+                                        const xMax = Math.max(...distances) + 0.5;
+                                        const x = Array.from({length: 100}, (_, i) => xMin + (xMax - xMin) * i / 99);
+
+                                        // 简单KDE计算（简化版）
+                                        const bandwidth = 0.5;
+                                        const y = x.map(xVal => {
+                                            return distances.reduce((sum, d) => {
+                                                const diff = (d - xVal) / bandwidth;
+                                                return sum + Math.exp(-0.5 * diff * diff);
+                                            }, 0) / (distances.length * bandwidth * Math.sqrt(2 * Math.PI));
+                                        });
+
+                                        datasets.push({
+                                            label: result.label,
+                                            data: x.map((xVal, i) => ({x: xVal, y: y[i]})),
+                                            borderColor: result.color || colors[sourceName] || '#000000',
+                                            backgroundColor: result.color || colors[sourceName] || '#000000',
+                                            borderWidth: 1.5,
+                                            fill: false,
+                                            tension: 0.6,
+                                            pointRadius: 0,
+                                            pointHoverRadius: 0,
+                                            pointBorderWidth: 0
+                                        });
+                                    }
+                                }
+                            } else {
+                                // 直方图视图
+                                for (const [sourceName, result] of Object.entries(filteredResults)) {
+                                    const distances = result.distances_clean;
+                                    if (distances.length > 0) {
+                                        // 创建直方图数据
+                                        const histData = createHistogramData(distances);
+                                        datasets.push({
+                                            label: result.label,
+                                            data: histData.bins.map((bin, i) => ({x: bin.center, y: histData.counts[i]})),
+                                            backgroundColor: result.color || colors[sourceName] || '#000000',
+                                            borderColor: result.color || colors[sourceName] || '#000000',
+                                            borderWidth: 1,
+                                            type: 'bar'
+                                        });
+                                    }
+                                }
+                            }
+
+                            // 确保canvas有正确的尺寸
+                            const container = ctx.parentElement;
+                            if (container && container.offsetWidth > 0 && container.offsetHeight > 0) {
+                                ctx.width = container.offsetWidth;
+                                ctx.height = container.offsetHeight;
+                            }
+
+                            const chart = new Chart(ctx, {
+                                type: showCurves.value ? 'line' : 'bar',
+                                data: {
+                                    datasets: datasets
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    animation: {
+                                        duration: 0 // 禁用动画避免初始化问题
+                                    },
+                                    plugins: {
+                                        title: {
+                                            display: true,
+                                            text: `${personaName} - 马氏距离分布`,
+                                            font: {
+                                                size: 14,
+                                                weight: 'bold'
+                                            }
+                                        },
+                                        legend: {
+                                            display: true,
+                                            position: 'top'
+                                        }
+                                    },
+                                    scales: {
+                                        x: {
+                                            type: 'linear',
+                                            title: {
+                                                display: true,
+                                                text: '马氏距离'
+                                            },
+                                            min: 0,
+                                            max: 5
+                                        },
+                                        y: {
+                                            title: {
+                                                display: true,
+                                                text: showCurves.value ? '概率密度' : '频数'
+                                            },
+                                            beginAtZero: true
+                                        }
+                                    }
+                                }
+                            });
+
+                            chartObject.value = chart;
+                            console.log(`Chart ${canvasId} created successfully`);
+                        } catch (err) {
+                            console.error('Error creating chart:', err);
+                            if (retryCount < 3) {
+                                setTimeout(() => createChartWithRetry(retryCount + 1), 200);
+                            } else {
+                                error.value = '图表创建失败: ' + err.message;
+                            }
+                        }
+                    };
+
+                    // 延迟创建图表，确保DOM完全加载
+                    setTimeout(() => {
+                        createChartWithRetry();
+                    }, 100);
+                };
+
+                const createHistogramData = (distances) => {
+                    if (distances.length === 0) {
+                        return { bins: [], counts: [] };
+                    }
+
+                    const min = Math.min(...distances);
+                    const max = Math.max(...distances);
+                    const binCount = Math.min(20, Math.ceil(Math.sqrt(distances.length)));
+                    const binWidth = (max - min) / binCount;
+
+                    const bins = [];
+                    const counts = Array(binCount).fill(0);
+
+                    for (let i = 0; i < binCount; i++) {
+                        bins.push({
+                            start: min + i * binWidth,
+                            end: min + (i + 1) * binWidth,
+                            center: min + (i + 0.5) * binWidth
+                        });
+                    }
+
+                    distances.forEach(distance => {
+                        const binIndex = Math.min(binCount - 1, Math.floor((distance - min) / binWidth));
+                        counts[binIndex]++;
+                    });
+
+                    return { bins, counts };
+                };
+
+                const destroyCharts = () => {
+                    [chartObject1, chartObject2].forEach(chartObj => {
+                        if (chartObj.value) {
+                            try {
+                                chartObj.value.destroy();
+                            } catch (err) {
+                                console.warn('Error destroying chart:', err);
+                            }
+                            chartObj.value = null;
+                        }
+                    });
+                };
+
+                const toggleView = () => {
+                    showCurves.value = !showCurves.value;
+                    if (analysisComplete.value) {
+                        renderCharts(results.value);
+                    }
+                };
+
+                const toggleNarrative = () => {
+                    showNarrative.value = !showNarrative.value;
+                    if (analysisComplete.value) {
+                        renderCharts(results.value);
+                    }
+                };
+
+                const forceRedrawChart = () => {
+                    if (analysisComplete.value) {
+                        renderCharts(results.value);
+                    }
+                };
+
+                onMounted(() => {
+                    // 初始化代码
+                });
+
+                return {
+                    loading,
+                    error,
+                    analysisComplete,
+                    showCurves,
+                    showNarrative,
+                    results,
+                    persona1Name,
+                    persona2Name,
+                    analysisStatus,
+                    filteredResults,
+                    runAnalysis,
+                    toggleView,
+                    toggleNarrative,
+                    forceRedrawChart
+                };
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+</html>

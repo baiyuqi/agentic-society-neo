@@ -1,0 +1,7 @@
+{
+    "llm": "deepseek",
+    "database": "data/db/llm.db",
+    "question_prompt": "sheet_prompt_LLM",
+    "persona_prompt": "from_skeleton_narrative",
+    "request_method": "sheet"
+}

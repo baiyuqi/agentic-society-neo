@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聚类分析 - Agentic Society</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/file-tree-component.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+        }
+        .chart-container {
+            position: relative;
+            min-height: 400px;
+            margin-bottom: 20px;
+        }
+        .control-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .metrics-table {
+            font-size: 0.9rem;
+        }
+        .metrics-table th {
+            background-color: #e9ecef;
+            font-weight: 600;
+        }
+
+        /* File Tree Styles */
+        .file-tree-node {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .file-tree-node:hover {
+            background-color: #f8f9fa;
+        }
+        .file-tree-node.selected {
+            background-color: #e3f2fd;
+            border-left: 3px solid #2196f3;
+        }
+        .file-tree-node .bi {
+            color: #6c757d;
+        }
+        .file-tree-node.selected .bi {
+            color: #2196f3;
+        }
+        .file-tree-container .modal-body {
+            max-height: 60vh;
+            overflow: hidden;
+        }
+        .file-tree {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 10px;
+        }
+
+        /* Results styling */
+        .results-section {
+            margin-top: 20px;
+        }
+        .metric-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .metric-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container-fluid">
+            <!-- Header -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-diagram-3 me-2"></i>聚类分析 (多文件)</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Control Panel -->
+                    <div class="control-panel">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <label class="form-label">选择包含多个数据库的目录:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" readonly
+                                           :value="selectedDirectory ? getDirectoryDisplayName(selectedDirectory) : '请选择目录...'"
+                                           placeholder="请选择包含多个数据库文件的目录...">
+                                    <button class="btn btn-outline-secondary" type="button" @click="openFileTree">
+                                        <i class="bi bi-folder"></i> 浏览目录
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted">请选择包含多个数据库文件(.db)的目录进行聚类分析</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">分析状态:</label>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge" :class="analysisStatus.class">
+                                        {{ analysisStatus.text }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button class="btn btn-primary" @click="runAnalysis" :disabled="!selectedDirectory || loading">
+                                    <i class="bi bi-play-circle me-1"></i>运行聚类分析
+                                </button>
+                                <button class="btn btn-outline-secondary ms-2" @click="forceRedrawChart" :disabled="!analysisComplete">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>重绘图表
+                                </button>
+                                <button class="btn btn-outline-success ms-2" @click="copyDataToClipboard" :disabled="!analysisComplete">
+                                    <i class="bi bi-clipboard me-1"></i>复制数据
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="loading" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </div>
+
+                    <div v-else-if="error" class="alert alert-danger">
+                        {{ error }}
+                    </div>
+
+                    <!-- Analysis Results -->
+                    <div v-if="analysisComplete" class="results-section">
+                        <!-- PCA Visualization Chart -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="bi bi-scatter-chart me-2"></i>聚类分析结果 (PCA可视化)</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="clusteringChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Metrics Cards -->
+                        <div class="row mt-4">
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value">{{ metrics.ari_score.toFixed(4) }}</div>
+                                    <div class="metric-label">调整兰德指数 (ARI)</div>
+                                    <small class="text-muted">1.0=完美匹配, 0.0=随机分配</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value">{{ metrics.average_centroid_distance.toFixed(4) }}</div>
+                                    <div class="metric-label">平均质心距离</div>
+                                    <small class="text-muted">簇间分离程度</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value">{{ metrics.num_samples }}</div>
+                                    <div class="metric-label">样本数量</div>
+                                    <small class="text-muted">分析的数据点总数</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value">{{ profileNames.length }}</div>
+                                    <div class="metric-label">画像数量</div>
+                                    <small class="text-muted">分析的数据库文件数</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Metrics Table -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6><i class="bi bi-table me-2"></i>详细分析指标</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped metrics-table">
+                                        <thead>
+                                            <tr>
+                                                <th>指标</th>
+                                                <th>数值</th>
+                                                <th>说明</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>调整兰德指数 (ARI)</td>
+                                                <td><strong>{{ metrics.ari_score.toFixed(4) }}</strong></td>
+                                                <td>聚类结果与真实标签的一致性度量</td>
+                                            </tr>
+                                            <tr>
+                                                <td>平均质心距离</td>
+                                                <td><strong>{{ metrics.average_centroid_distance.toFixed(4) }}</strong></td>
+                                                <td>各聚类中心之间的平均欧氏距离</td>
+                                            </tr>
+                                            <tr>
+                                                <td>最小质心距离</td>
+                                                <td><strong>{{ metrics.min_centroid_distance.toFixed(4) }}</strong></td>
+                                                <td>最近的聚类中心之间的距离</td>
+                                            </tr>
+                                            <tr>
+                                                <td>最大质心距离</td>
+                                                <td><strong>{{ metrics.max_centroid_distance.toFixed(4) }}</strong></td>
+                                                <td>最远的聚类中心之间的距离</td>
+                                            </tr>
+                                            <tr>
+                                                <td>PCA解释方差 (PC1)</td>
+                                                <td><strong>{{ (metrics.explained_variance[0] * 100).toFixed(1) }}%</strong></td>
+                                                <td>第一主成分解释的方差比例</td>
+                                            </tr>
+                                            <tr>
+                                                <td>PCA解释方差 (PC2)</td>
+                                                <td><strong>{{ (metrics.explained_variance[1] * 100).toFixed(1) }}%</strong></td>
+                                                <td>第二主成分解释的方差比例</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Profile Information -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6><i class="bi bi-info-circle me-2"></i>分析画像信息</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>参与分析的画像:</h6>
+                                        <ul class="list-group">
+                                            <li v-for="(profile, index) in profileNames" :key="index" class="list-group-item">
+                                                {{ profile }}
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>分析说明:</h6>
+                                        <p class="text-muted">
+                                            本分析使用K-Means聚类算法对多个AI智能体画像的性格测试结果进行聚类分析。
+                                            通过比较聚类结果与真实画像标签，评估画像之间的可区分性。
+                                        </p>
+                                        <p class="text-muted">
+                                            <strong>ARI解释:</strong><br>
+                                            • ARI ≈ 1.0: 完美匹配，画像极易区分<br>
+                                            • ARI ≈ 0.0: 随机分配，画像几乎无法区分<br>
+                                            • ARI < 0.0: 比随机分配还差
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="selectedDirectory" class="text-center text-muted mt-5">
+                        <i class="bi bi-diagram-3 display-4"></i>
+                        <p class="mt-3">点击"运行聚类分析"开始多画像聚类分析</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Tree Component -->
+        <file-tree ref="fileTreeRef"
+                   modal-title="选择分析目录"
+                   search-placeholder="搜索目录..."
+                   :allow-directory-selection="true"
+                   :show-only-directories="true"
+                   @selected="onDirectorySelected">
+        </file-tree>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+
+        const app = createApp({
+            components: {
+                'file-tree': FileTreeComponent
+            },
+            setup() {
+                const selectedDirectory = ref('');
+                const loading = ref(false);
+                const error = ref(null);
+                const analysisComplete = ref(false);
+                const metrics = ref({});
+                const profileNames = ref([]);
+                const chartObject = ref(null);
+                const fileTreeRef = ref(null);
+
+                // 分析状态计算属性
+                const analysisStatus = computed(() => {
+                    if (loading.value) {
+                        return { text: '分析中...', class: 'bg-warning' };
+                    } else if (analysisComplete.value) {
+                        return { text: '分析完成', class: 'bg-success' };
+                    } else if (selectedDirectory.value) {
+                        return { text: '准备分析', class: 'bg-info' };
+                    } else {
+                        return { text: '请选择目录', class: 'bg-secondary' };
+                    }
+                });
+
+                // 获取目录显示名称
+                const getDirectoryDisplayName = (path) => {
+                    return path.split('/').pop() || path;
+                };
+
+                // 打开文件树模态框
+                const openFileTree = () => {
+                    if (fileTreeRef.value) {
+                        fileTreeRef.value.open();
+                    }
+                };
+
+                // 目录选择回调
+                const onDirectorySelected = (directory) => {
+                    if (directory && directory.path && directory.type === 'directory') {
+                        selectedDirectory.value = directory.path;
+                        onDirectoryChange();
+                    }
+                };
+
+                const onDirectoryChange = () => {
+                    analysisComplete.value = false;
+                    destroyChart();
+                };
+
+                const runAnalysis = async () => {
+                    if (!selectedDirectory.value) return;
+
+                    try {
+                        loading.value = true;
+                        error.value = null;
+                        analysisComplete.value = false;
+                        destroyChart();
+
+                        // 确保ChartJS库已加载
+                        if (typeof Chart === 'undefined') {
+                            throw new Error('ChartJS库未正确加载，请刷新页面重试');
+                        }
+
+                        // 调用后端API进行分析
+                        const response = await fetch('/api/analysis/clustering', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                directory_path: selectedDirectory.value
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || '聚类分析失败');
+                        }
+
+                        const result = await response.json();
+
+                        // 更新数据
+                        metrics.value = result;
+                        profileNames.value = result.profile_names;
+
+                        // 等待一小段时间确保DOM完全渲染
+                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        // 渲染图表
+                        renderChart(result);
+                        analysisComplete.value = true;
+
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const renderChart = (result) => {
+                    destroyChart();
+
+                    // 使用重试机制创建图表
+                    const createChartWithRetry = (retryCount = 0) => {
+                        const ctx = document.getElementById('clusteringChart');
+                        if (!ctx) {
+                            console.log('Canvas element not found, retrying...');
+                            if (retryCount < 3) {
+                                setTimeout(() => createChartWithRetry(retryCount + 1), 100);
+                            }
+                            return;
+                        }
+
+                        try {
+                            // 准备数据
+                            const pc1 = result.principal_components.map(pc => pc[0]);
+                            const pc2 = result.principal_components.map(pc => pc[1]);
+                            const predictedClusters = result.predicted_labels;
+                            const trueProfiles = result.true_labels;
+
+                            // 创建数据集
+                            const datasets = [];
+                            const uniqueClusters = [...new Set(predictedClusters)];
+                            const colors = ['#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#1f77b4', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
+
+                            uniqueClusters.forEach((cluster, index) => {
+                                const clusterIndices = predictedClusters.map((pred, i) => pred === cluster ? i : -1).filter(i => i !== -1);
+                                const clusterPc1 = clusterIndices.map(i => pc1[i]);
+                                const clusterPc2 = clusterIndices.map(i => pc2[i]);
+
+                                datasets.push({
+                                    label: `Cluster ${cluster + 1}`,
+                                    data: clusterPc1.map((x, i) => ({x, y: clusterPc2[i]})),
+                                    backgroundColor: colors[index % colors.length] + 'CC', // 添加透明度
+                                    borderColor: '#ffffff', // 白色边界
+                                    borderWidth: 1.5, // 边界宽度
+                                    pointStyle: 'circle',
+                                    pointRadius: 6,
+                                    pointHoverRadius: 8,
+                                    pointHoverBorderWidth: 2 // 悬停时边界加粗
+                                });
+                            });
+
+                            // 确保canvas有正确的尺寸
+                            const container = ctx.parentElement;
+                            if (container && container.offsetWidth > 0 && container.offsetHeight > 0) {
+                                ctx.width = container.offsetWidth;
+                                ctx.height = container.offsetHeight;
+                            }
+
+                            const chart = new Chart(ctx, {
+                                type: 'scatter',
+                                data: {
+                                    datasets: datasets
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    animation: {
+                                        duration: 0 // 禁用动画避免初始化问题
+                                    },
+                                    plugins: {
+                                        title: {
+                                            display: true,
+                                            text: 'K-Means聚类分析结果 (PCA可视化)',
+                                            font: {
+                                                size: 16,
+                                                weight: 'bold'
+                                            }
+                                        },
+                                        tooltip: {
+                                            callbacks: {
+                                                label: function(context) {
+                                                    const pointIndex = context.dataIndex;
+                                                    const trueProfile = result.profile_names[result.true_labels[pointIndex]];
+                                                    return `Profile: ${trueProfile}, Cluster: ${result.predicted_labels[pointIndex] + 1}`;
+                                                }
+                                            }
+                                        }
+                                    },
+                                    scales: {
+                                        x: {
+                                            title: {
+                                                display: true,
+                                                text: `Principal Component 1 (${(result.explained_variance[0] * 100).toFixed(1)}% variance)`
+                                            }
+                                        },
+                                        y: {
+                                            title: {
+                                                display: true,
+                                                text: `Principal Component 2 (${(result.explained_variance[1] * 100).toFixed(1)}% variance)`
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+
+                            chartObject.value = chart;
+                            console.log('Clustering chart created successfully');
+                        } catch (err) {
+                            console.error('Error creating chart:', err);
+                            if (retryCount < 3) {
+                                setTimeout(() => createChartWithRetry(retryCount + 1), 200);
+                            } else {
+                                error.value = '图表创建失败: ' + err.message;
+                            }
+                        }
+                    };
+
+                    // 延迟创建图表，确保DOM完全加载
+                    setTimeout(() => {
+                        createChartWithRetry();
+                    }, 100);
+                };
+
+                const destroyChart = () => {
+                    if (chartObject.value) {
+                        try {
+                            chartObject.value.destroy();
+                        } catch (err) {
+                            console.warn('Error destroying chart:', err);
+                        }
+                        chartObject.value = null;
+                    }
+                };
+
+                const forceRedrawChart = () => {
+                    if (chartObject.value) {
+                        try {
+                            chartObject.value.update();
+                        } catch (err) {
+                            console.warn('Error updating chart:', err);
+                        }
+                    }
+                };
+
+                const copyDataToClipboard = async () => {
+                    try {
+                        const dataToCopy = {
+                            directory: selectedDirectory.value,
+                            metrics: metrics.value,
+                            profile_names: profileNames.value
+                        };
+
+                        const jsonData = JSON.stringify(dataToCopy, null, 2);
+                        await navigator.clipboard.writeText(jsonData);
+                        alert('数据已复制到剪贴板');
+                    } catch (err) {
+                        alert('复制失败: ' + err.message);
+                    }
+                };
+
+                onMounted(() => {
+                    // 初始化代码
+                });
+
+                return {
+                    selectedDirectory,
+                    loading,
+                    error,
+                    analysisComplete,
+                    metrics,
+                    profileNames,
+                    analysisStatus,
+                    fileTreeRef,
+                    getDirectoryDisplayName,
+                    openFileTree,
+                    onDirectorySelected,
+                    onDirectoryChange,
+                    runAnalysis,
+                    renderChart,
+                    destroyChart,
+                    forceRedrawChart,
+                    copyDataToClipboard
+                };
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+</html>

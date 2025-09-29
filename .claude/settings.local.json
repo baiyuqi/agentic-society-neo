@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(poetry install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(dir:*)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\post/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\doc/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\doc/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\asociety/**)",
+      "Read(/D:\\mcp-space\\agentic-society-neo\\tools/**)",
+      "Bash(sqlite3:*)",
+      "Bash(poetry shell)",
+      "Bash(pip install:*)",
+      "Bash(git checkout:*)",
+      "Bash(poetry run:*)",
+      "Bash(fi:*)",
+      "Bash(done)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(poetry export:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "important": "1.用poetry环境！不要pip install！2.这是windows系统！"
+}
