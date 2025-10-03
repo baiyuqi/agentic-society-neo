@@ -64,6 +64,10 @@ class OceanDensityPanel:
         self.save_button = ttk.Button(analysis_frame, text="Save to SVG", command=self.save_to_svg, state=tk.DISABLED)
         self.save_button.pack(side=tk.LEFT, padx=5)
 
+        # Distance metrics button
+        self.distance_button = ttk.Button(analysis_frame, text="Calculate Distances", command=self.calculate_distances, state=tk.DISABLED)
+        self.distance_button.pack(side=tk.LEFT, padx=5)
+
         self.selected_files = []
 
         # Create plot frame
@@ -99,6 +103,7 @@ class OceanDensityPanel:
             self.update_file_list_label()
             self.run_button.config(state=tk.NORMAL if len(self.selected_files) >= 1 else tk.DISABLED)
             self.save_button.config(state=tk.DISABLED)
+            self.distance_button.config(state=tk.DISABLED)
             if self.canvas:
                 self.canvas.get_tk_widget().destroy()
                 self.canvas = None
@@ -108,6 +113,7 @@ class OceanDensityPanel:
         self.update_file_list_label()
         self.run_button.config(state=tk.DISABLED)
         self.save_button.config(state=tk.DISABLED)
+        self.distance_button.config(state=tk.DISABLED)
         if self.canvas:
             self.canvas.get_tk_widget().destroy()
             self.canvas = None
@@ -129,6 +135,7 @@ class OceanDensityPanel:
             return
 
         self.save_button.config(state=tk.DISABLED)
+        self.distance_button.config(state=tk.DISABLED)
 
         def analysis_task(progress_dialog):
             results = {}
@@ -272,8 +279,9 @@ class OceanDensityPanel:
             self.canvas.draw()
             self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-            # Enable SVG export
+            # Enable SVG export and distance calculation
             self.save_button.config(state=tk.NORMAL)
+            self.distance_button.config(state=tk.NORMAL)
 
         except Exception as e:
             messagebox.showerror("显示错误", f"显示结果时出错: {e}")
@@ -381,3 +389,262 @@ class OceanDensityPanel:
 
     def setData(self, appKey, updateTree):
         pass
+
+    def calculate_distances(self):
+        """Calculate distance metrics between datasets and human.db"""
+        if not self.results:
+            messagebox.showwarning("No Analysis Results", "Please run analysis first to generate results.")
+            return
+
+        # Check if human.db exists
+        human_db_path = "data/db/backup/human.db"
+        if not os.path.exists(human_db_path):
+            messagebox.showwarning("Human DB Not Found", f"human.db not found at: {human_db_path}")
+            return
+
+        def distance_task(progress_dialog):
+            from asociety.personality.analysis_utils import load_personality_data
+            import numpy as np
+            from scipy.stats import wasserstein_distance
+            from sklearn.metrics.pairwise import cosine_similarity
+
+            # Load human data
+            progress_dialog.update_message("正在加载 human.db 数据...")
+            human_df = load_personality_data(human_db_path)
+            human_data = human_df[self.ocean_dimensions].values
+
+            distance_results = {}
+            total_files = len(self.results)
+
+            for i, (file_path, result) in enumerate(self.results.items()):
+                progress_dialog.update_message(f"正在计算 {result['label']} 的距离...")
+
+                # Get current dataset data
+                current_data = []
+                for dimension in self.ocean_dimensions:
+                    current_data.append(result['ocean_data'][dimension])
+                current_data = np.array(current_data).T  # Transpose to get samples x dimensions
+
+                distances = {}
+
+                # Calculate Wasserstein distance for each dimension
+                wasserstein_distances = []
+                for dim_idx, dimension in enumerate(self.ocean_dimensions):
+                    human_dim = human_data[:, dim_idx]
+                    current_dim = current_data[:, dim_idx]
+                    wd = wasserstein_distance(human_dim, current_dim)
+                    wasserstein_distances.append(wd)
+                distances['Wasserstein_Mean'] = np.mean(wasserstein_distances)
+                distances['Wasserstein_Std'] = np.std(wasserstein_distances)
+
+                # Calculate Sliced Wasserstein approximation
+                sliced_wasserstein = self._calculate_sliced_wasserstein(human_data, current_data)
+                distances['Sliced_Wasserstein'] = sliced_wasserstein
+
+                # Calculate Fréchet distance approximation
+                frechet_distance = self._calculate_frechet_distance(human_data, current_data)
+                distances['Fréchet_Distance'] = frechet_distance
+
+                # Calculate Euclidean distance between means
+                human_mean = np.mean(human_data, axis=0)
+                current_mean = np.mean(current_data, axis=0)
+                distances['Euclidean_Mean_Distance'] = np.linalg.norm(human_mean - current_mean)
+
+                # Calculate cosine similarity
+                cosine_sim = cosine_similarity([human_mean], [current_mean])[0][0]
+                distances['Cosine_Similarity'] = cosine_sim
+
+                # Calculate Maximum Mean Discrepancy (MMD)
+                mmd_distance = self._calculate_mmd(human_data, current_data)
+                distances['MMD'] = mmd_distance
+
+                # Calculate Averaged Monotonic Wasserstein (AMW)
+                amw_distance = self._calculate_amw(human_data, current_data)
+                distances['AMW'] = amw_distance
+
+                distance_results[result['label']] = distances
+
+                progress = (i + 1) / total_files * 100
+                progress_dialog.set_progress(progress)
+
+            return distance_results
+
+        def on_success(distance_results):
+            if distance_results:
+                self._display_distance_results(distance_results)
+
+        def on_error(error):
+            messagebox.showerror("距离计算错误", f"计算距离时发生错误: {error}")
+
+        self.progress_manager.run_with_progress(
+            distance_task,
+            title="计算距离指标中...",
+            message="正在准备距离计算...",
+            success_callback=on_success,
+            error_callback=on_error
+        )
+
+    def _calculate_sliced_wasserstein(self, data1, data2, n_projections=100):
+        """Calculate Sliced Wasserstein distance approximation"""
+        import numpy as np
+        from scipy.stats import wasserstein_distance
+
+        n_dims = data1.shape[1]
+        projections = np.random.randn(n_projections, n_dims)
+        projections = projections / np.linalg.norm(projections, axis=1, keepdims=True)
+
+        sw_distances = []
+        for proj in projections:
+            proj_data1 = data1 @ proj
+            proj_data2 = data2 @ proj
+            wd = wasserstein_distance(proj_data1, proj_data2)
+            sw_distances.append(wd)
+
+        return np.mean(sw_distances)
+
+    def _calculate_frechet_distance(self, data1, data2):
+        """Calculate Fréchet distance approximation between two multivariate distributions"""
+        import numpy as np
+        from scipy.linalg import sqrtm
+
+        # Calculate means and covariances
+        mu1 = np.mean(data1, axis=0)
+        mu2 = np.mean(data2, axis=0)
+
+        # Ensure we have enough samples for covariance calculation
+        if len(data1) < 2 or len(data2) < 2:
+            return np.nan
+
+        sigma1 = np.cov(data1, rowvar=False)
+        sigma2 = np.cov(data2, rowvar=False)
+
+        # Add stronger regularization for numerical stability
+        reg = 1e-3
+        sigma1 += np.eye(sigma1.shape[0]) * reg
+        sigma2 += np.eye(sigma2.shape[0]) * reg
+
+        try:
+            # Calculate matrix square root using scipy's sqrtm with error handling
+            sigma_product = sigma1 @ sigma2
+
+            # Check if matrix is positive definite
+            eigenvalues = np.linalg.eigvals(sigma_product)
+            if np.any(eigenvalues < 0):
+                # If not positive definite, use alternative approach
+                trace_term = np.trace(sigma1 + sigma2 - 2 * np.sqrt(np.abs(sigma_product)))
+            else:
+                # Use proper matrix square root
+                sqrt_sigma_product = sqrtm(sigma_product)
+                trace_term = np.trace(sigma1 + sigma2 - 2 * sqrt_sigma_product)
+
+            # Calculate mean term
+            mean_term = np.sum((mu1 - mu2) ** 2)
+
+            # Fréchet distance approximation
+            frechet_dist = mean_term + trace_term
+
+            # Ensure result is non-negative
+            frechet_dist = max(0, frechet_dist)
+
+            return np.sqrt(frechet_dist)
+
+        except (np.linalg.LinAlgError, ValueError):
+            # Fallback: use simplified distance if matrix operations fail
+            mean_term = np.sum((mu1 - mu2) ** 2)
+            cov_diff = np.linalg.norm(sigma1 - sigma2, 'fro')
+            return np.sqrt(mean_term + cov_diff)
+
+    def _calculate_mmd(self, data1, data2, kernel='rbf', gamma=None):
+        """Calculate Maximum Mean Discrepancy (MMD) between two datasets"""
+        import numpy as np
+        from sklearn.metrics.pairwise import pairwise_kernels
+
+        n1 = data1.shape[0]
+        n2 = data2.shape[0]
+
+        # Set default gamma if not provided
+        if gamma is None:
+            # Use median heuristic for RBF kernel
+            if kernel == 'rbf':
+                from sklearn.metrics.pairwise import euclidean_distances
+                combined_data = np.vstack([data1, data2])
+                pairwise_distances = euclidean_distances(combined_data)
+                gamma = 1.0 / (2.0 * np.median(pairwise_distances) ** 2)
+            else:
+                gamma = 1.0 / data1.shape[1]  # Default to 1/dimensions
+
+        # Calculate kernel matrices
+        K11 = pairwise_kernels(data1, metric=kernel, gamma=gamma)
+        K22 = pairwise_kernels(data2, metric=kernel, gamma=gamma)
+        K12 = pairwise_kernels(data1, data2, metric=kernel, gamma=gamma)
+
+        # Calculate MMD^2
+        mmd_squared = (np.sum(K11) / (n1 * n1) +
+                      np.sum(K22) / (n2 * n2) -
+                      2 * np.sum(K12) / (n1 * n2))
+
+        # Ensure non-negativity and return MMD
+        mmd = np.sqrt(max(0, mmd_squared))
+
+        return mmd
+
+    def _calculate_amw(self, data1, data2):
+        """Calculate Averaged Monotonic Wasserstein (AMW) distance"""
+        import numpy as np
+        from scipy.stats import wasserstein_distance
+
+        n_traits = data1.shape[1]
+
+        # Calculate 1D Wasserstein-1 distance for each trait
+        wasserstein_distances = []
+        for trait_idx in range(n_traits):
+            trait_data1 = data1[:, trait_idx]
+            trait_data2 = data2[:, trait_idx]
+
+            # Calculate 1D Wasserstein-1 distance
+            wd = wasserstein_distance(trait_data1, trait_data2)
+            wasserstein_distances.append(wd)
+
+        # AMW is the average of 1D Wasserstein distances across all traits
+        amw = np.mean(wasserstein_distances)
+
+        return amw
+
+    def _display_distance_results(self, distance_results):
+        """Display distance results in a popup window"""
+        import tkinter as tk
+        from tkinter import ttk
+
+        # Create popup window
+        popup = tk.Toplevel()
+        popup.title("距离指标计算结果")
+        popup.geometry("800x400")
+
+        # Create frame for table
+        frame = ttk.Frame(popup)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Create treeview
+        columns = ['Dataset'] + list(next(iter(distance_results.values())).keys())
+        tree = ttk.Treeview(frame, columns=columns, show='headings', height=15)
+
+        # Configure columns
+        for col in columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=120, anchor='center')
+
+        # Add data
+        for dataset, metrics in distance_results.items():
+            values = [dataset] + [f"{value:.4f}" if isinstance(value, (int, float)) else str(value)
+                                for value in metrics.values()]
+            tree.insert('', 'end', values=values)
+
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side='right', fill='y')
+        tree.pack(fill=tk.BOTH, expand=True)
+
+        # Add close button
+        close_button = ttk.Button(popup, text="关闭", command=popup.destroy)
+        close_button.pack(pady=10)
