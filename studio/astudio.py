@@ -94,6 +94,7 @@ LANGUAGES = {
         'exit': 'Exit',
         'analysis': 'Analysis',
         'analysis_exp': 'Experiment Analysis',
+        'personality-browse': 'Personality Browse',
         'personality': 'Personality',
         'age_personality_curve': 'Age Personality Curve',
         'personality_stats': 'Personality Statistics',
@@ -141,13 +142,19 @@ LANGUAGES = {
         'equilux': 'Equilux (Dark)',
         'breeze': 'Breeze (Fresh)',
         'clam': 'Clam (Default)',
-        'vista': 'Vista (Windows)'
+        'vista': 'Vista (Windows)',
+        'special_individual_level': 'Individual Level',
+        'special_group_level': 'Group Level',
+        'curve_comparison': 'Age Dimension Curve Comparison (deepseek)',
+        'raw_comparison': 'Normal Generation Profile Curve Analysis',
+        'antialign_comparison': 'Anti-Align vs Normal Generation Comparison',
+        'narrative_comparison': 'Narrative vs Anti-Align vs Normal Generation Comparison'
     }
 }
 
 class MainWindow:
     def __init__(self, root) -> None:
-        self.lang = 'zh'
+        self.lang = 'en'
         self.current_theme = 'arc'
         self.root = root
         root.title('AgenticSociety')
@@ -310,8 +317,8 @@ class MainWindow:
         tv.insert('individual_level', 'end', 'file_clustering', text=lang['file_clustering_analysis'], image='')
 
         # Children for "Special Analysis"
-        tv.insert('special_analysis', 'end', 'special_individual_level', text='个体水平', image='')
-        tv.insert('special_analysis', 'end', 'special_group_level', text='群体水平', image='')
+        tv.insert('special_analysis', 'end', 'special_individual_level', text=lang.get('special_individual_level', 'Individual Level'), image='')
+        tv.insert('special_analysis', 'end', 'special_group_level', text=lang.get('special_group_level', 'Group Level'), image='')
 
         # Children for "Special Analysis - Individual Level"
         tv.insert('special_individual_level', 'end', 'stability_analysis', text=lang['stability_analysis'], image='')
@@ -320,10 +327,10 @@ class MainWindow:
         tv.insert('special_individual_level', 'end', 'single_identifiability', text=lang['single_identifiability_analysis'], image='')
 
         # Children for "Special Analysis - Group Level"
-        tv.insert('special_group_level', 'end', 'curve_comparison', text='年龄维度曲线对比 (deepseek)', image='')
-        tv.insert('special_group_level', 'end', 'raw_comparison', text='正常生成画像曲线分析', image='')
-        tv.insert('special_group_level', 'end', 'antialign_comparison', text='抗对齐vs正常生成对比', image='')
-        tv.insert('special_group_level', 'end', 'narrative_comparison', text='叙事vs抗对齐vs正常生成对比', image='')
+        tv.insert('special_group_level', 'end', 'curve_comparison', text=lang.get('curve_comparison', 'Age Dimension Curve Comparison (deepseek)'), image='')
+        tv.insert('special_group_level', 'end', 'raw_comparison', text=lang.get('raw_comparison', 'Normal Generation Profile Curve Analysis'), image='')
+        tv.insert('special_group_level', 'end', 'antialign_comparison', text=lang.get('antialign_comparison', 'Anti-Align vs Normal Generation Comparison'), image='')
+        tv.insert('special_group_level', 'end', 'narrative_comparison', text=lang.get('narrative_comparison', 'Narrative vs Anti-Align vs Normal Generation Comparison'), image='')
         
         tv.item('working_db', open=True)
         tv.item('data_analysis', open=True)
