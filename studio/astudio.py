@@ -7,28 +7,27 @@ from tkinter import font
 from ttkthemes import ThemedStyle
 
 from asociety.repository.database import set_currentdb
-from studio.single_mahalanobis_panel import SingleMahalanobisPanel
-from studio.clustering_panel import ClusteringPanel
-from studio.manual_clustering_panel import ManualClusteringPanel
-from studio.single_density_panel import SingleDensityPanel
-from studio.ocean_density_panel import OceanDensityPanel # Import the new OCEAN density panel
-from studio.tsne_panel import TSNEPanel
-from studio.comparison_panel import ComparisonPanel # Import the new comparison panel
-from studio.internal_consistency_panel import InternalConsistencyPanel # Import the new panel
-from studio.factor_analysis_panel import FactorAnalysisPanel # Import the factor analysis panel
-from studio.identifiability_panel import IdentifiabilityPanel # Import the new identifiability panel
-from studio.single_identifiability_panel import SingleIdentifiabilityPanel # Import the single identifiability panel
-from studio.curve_comparison_panel import CurveComparisonPanel # Import the new curve comparison panel
-from studio.raw_comparison_panel import RawComparisonPanel # Import the new raw comparison panel
-from studio.antialign_comparison_panel import AntialignComparisonPanel # Import the new antialign comparison panel
-from studio.narrative_comparison_panel import NarrativeComparisonPanel # Import the new narrative comparison panel
-from studio.stability_analysis_panel import StabilityAnalysisPanel # Import the new stability panel
-from studio.cfa_panel import CFAPanel # Import the new CFA panel
-from studio.multi_mahalanobis_panel import MultiMahalanobisPanel # Import the new multi Mahalanobis panel
-from studio.group_identifiability_panel import GroupIdentifiabilityPanel # Import the new group identifiability panel
-from studio.personality_browse import PersonalityBrowser
-from studio.personality_analysis import PersonalityAnalysis
-from studio.personality_stats import PersonalityStats
+from studio.working_db.personality_browse import PersonalityBrowser
+from studio.working_db.personality_stats import PersonalityStats
+from studio.data_analysis.group_level.age_personality_curve import AgePersonalityCurve
+from studio.data_analysis.individual_level.single_mahalanobis_panel import SingleMahalanobisPanel
+from studio.data_analysis.individual_level.folder_clustering_panel import FolderClusteringPanel
+from studio.data_analysis.individual_level.file_clustering_panel import FileClusteringPanel
+from studio.data_analysis.individual_level.single_density_panel import SingleDensityPanel
+from studio.data_analysis.other.ocean_density_panel import OceanDensityPanel # Import the new OCEAN density panel
+from studio.data_analysis.other.tsne_panel import TSNEPanel
+from studio.data_analysis.other.comparison_panel import ComparisonPanel # Import the new comparison panel
+from studio.data_analysis.other.internal_consistency_panel import InternalConsistencyPanel # Import the new panel
+from studio.data_analysis.other.factor_analysis_panel import FactorAnalysisPanel # Import the factor analysis panel
+from studio.data_analysis.other.cfa_panel import CFAPanel # Import the new CFA panel
+from studio.special_analysis.individual_level.identifiability_panel import IdentifiabilityPanel # Import the new identifiability panel
+from studio.special_analysis.individual_level.single_identifiability_panel import SingleIdentifiabilityPanel # Import the single identifiability panel
+from studio.special_analysis.individual_level.stability_analysis_panel import StabilityAnalysisPanel # Import the new stability analysis panel
+from studio.special_analysis.individual_level.group_identifiability_panel import GroupIdentifiabilityPanel # Import the new group identifiability panel
+from studio.special_analysis.group_level.curve_comparison_panel import CurveComparisonPanel # Import the new curve comparison panel
+from studio.special_analysis.group_level.raw_comparison_panel import RawComparisonPanel # Import the new raw comparison panel
+from studio.special_analysis.group_level.antialign_comparison_panel import AntialignComparisonPanel # Import the new antialign comparison panel
+from studio.special_analysis.group_level.narrative_comparison_panel import NarrativeComparisonPanel # Import the new narrative comparison panel
 from studio.config_panel import ConfigPanel
 
 LANGUAGES = {
@@ -39,8 +38,8 @@ LANGUAGES = {
         'exit': '退出',
         'analysis': '分析',
         'analysis_exp': '实验分析',
-        'personality': '性格',
-        'personality_analysis': '性格分析',
+        'personality-browse': '性格浏览',
+        'age_personality_curve': '年龄性格曲线',
         'personality_stats': '性格统计',
         'evaluation': '评估',
         'base': '基础',
@@ -55,12 +54,15 @@ LANGUAGES = {
         'menu_language': '语言/Language',
         'working_db': '工作数据库',
         'data_analysis': '数据分析',
+        'individual_level': '个体水平',
+        'group_level': '群体水平',
+        'other_analysis': '其他',
         'mahalanobis_distance': '马氏距离分析 (单文件)',
-        'multi_mahalanobis_distance': '马氏距离对比 (多数据源)',
-        'single_density_analysis': '单图密度分析 (多文件)',
+        'stability_analysis': '稳定性分析',
+        'multi_mahalanobis_analysis': '马氏距离分析 (多文件)',
         'ocean_density_analysis': 'OCEAN维度密度分析',
-        'clustering_analysis': '聚类分析 (多文件)',
-        'manual_clustering_analysis': '手动聚类分析 (多文件)',
+        'folder_clustering_analysis': '选择文件夹聚类 (多文件)',
+        'file_clustering_analysis': '选择文件聚类 (多文件)',
         'tsne_analysis': 't-SNE 可视化 (多文件)',
         'comparison_analysis': '画像对比分析 (多模式)',
         'consistency_analysis': '内部一致性分析',
@@ -93,7 +95,7 @@ LANGUAGES = {
         'analysis': 'Analysis',
         'analysis_exp': 'Experiment Analysis',
         'personality': 'Personality',
-        'personality_analysis': 'Personality Analysis',
+        'age_personality_curve': 'Age Personality Curve',
         'personality_stats': 'Personality Statistics',
         'evaluation': 'Evaluation',
         'base': 'Base',
@@ -108,12 +110,15 @@ LANGUAGES = {
         'menu_language': '语言/Language',
         'working_db': 'Working Database',
         'data_analysis': 'Data Analysis',
+        'individual_level': 'Individual Level',
+        'group_level': 'Group Level',
+        'other_analysis': 'Other',
         'mahalanobis_distance': 'Mahalanobis Dist (Single File)',
-        'multi_mahalanobis_distance': 'Mahalanobis Compare (Multi-Source)',
-        'single_density_analysis': 'Single Density Plot (Multi-File)',
+        'stability_analysis': 'Stability Analysis',
+        'multi_mahalanobis_analysis': 'Mahalanobis Distance Analysis (Multi-File)',
         'ocean_density_analysis': 'OCEAN Dimension Density Analysis',
-        'clustering_analysis': 'Clustering (Multi-File)',
-        'manual_clustering_analysis': 'Manual Clustering (Multi-File)',
+        'folder_clustering_analysis': 'Folder Clustering (Multi-File)',
+        'file_clustering_analysis': 'File Clustering (Multi-File)',
         'tsne_analysis': 't-SNE Visualization (Multi-File)',
         'comparison_analysis': 'Profile Comparison (Multi-Mode)',
         'consistency_analysis': 'Internal Consistency',
@@ -192,15 +197,15 @@ class MainWindow:
         
         # Initialize all panels
         self.panels = {
-            'personality': PersonalityBrowser(self.right),
-            'personality-analysis': PersonalityAnalysis(self.right),
+            'personality-browse': PersonalityBrowser(self.right),
+            'age-personality-curve': AgePersonalityCurve(self.right),
             'personality-stats': PersonalityStats(self.right),
             'mahalanobis': SingleMahalanobisPanel(self.right),
-            'multi_mahalanobis': MultiMahalanobisPanel(self.right),
-            'single_density': SingleDensityPanel(self.right),
+            'stability_analysis': StabilityAnalysisPanel(self.right),
+            'multi_mahalanobis': SingleDensityPanel(self.right),
             'ocean_density': OceanDensityPanel(self.right),  # Add the new OCEAN density panel
-            'clustering': ClusteringPanel(self.right),
-            'manual_clustering': ManualClusteringPanel(self.right),
+            'folder_clustering': FolderClusteringPanel(self.right),
+            'file_clustering': FileClusteringPanel(self.right),
             'tsne': TSNEPanel(self.right),
             'comparison': ComparisonPanel(self.right),
             'consistency': InternalConsistencyPanel(self.right),
@@ -212,8 +217,7 @@ class MainWindow:
             'curve_comparison': CurveComparisonPanel(self.right),
             'raw_comparison': RawComparisonPanel(self.right),
             'antialign_comparison': AntialignComparisonPanel(self.right),
-            'narrative_comparison': NarrativeComparisonPanel(self.right),
-            'stability': StabilityAnalysisPanel(self.right)
+            'narrative_comparison': NarrativeComparisonPanel(self.right)
         }
         
         self.set_language(self.lang)
@@ -230,7 +234,7 @@ class MainWindow:
         filemenu = Menu(menubar, tearoff=0, border=12)
 
         filemenu.add_command(label=LANGUAGES[self.lang].get('configuration', 'Configuration'), command=self.open_config_panel)
-        filemenu.add_command(label=LANGUAGES[self.lang].get('switch_db', 'Switch Database'), command=self.open_db)
+
         filemenu.add_command(label=LANGUAGES[self.lang].get('close', 'Close'), command=self.donothing)
         filemenu.add_separator()
 
@@ -249,27 +253,6 @@ class MainWindow:
         config_panel = ConfigPanel(self.root)
         config_panel.grab_set() # Make the config panel modal
 
-    def open_db(self):
-        file_path = filedialog.askopenfilename(
-            title='选择数据库文件',
-            filetypes=[('SQLite DB', '*.db'), ('All Files', '*.*')],
-            initialdir='data/db/'
-        )
-        if file_path:
-            set_currentdb(file_path)
-            from tkinter import messagebox
-            messagebox.showinfo('数据库切换', f'已切换到数据库：\n{file_path}')
-            # Refresh relevant panels
-            for key in ['personality', 'personality-analysis', 'personality-stats']:
-                panel = self.panels.get(key)
-                if panel:
-                    try:
-                        if hasattr(panel, 'refresh_data'):
-                            panel.refresh_data()
-                        elif hasattr(panel, 'setData'):
-                            panel.setData(None, self.updateTree)
-                    except Exception as e:
-                        messagebox.showerror('面板刷新错误', f'切换数据库后刷新面板时出错：\n{e}')
 
     def tree(self, frame):
         tv = ttk.Treeview(frame, style="Treeview")
@@ -301,32 +284,46 @@ class MainWindow:
         tv.insert('', 'end', 'special_analysis', text=lang['special_analysis'], image='')
 
         # Children for "Working Database"
-        tv.insert('working_db', 'end', 'personality', text=lang['personality'], image='')
+        tv.insert('working_db', 'end', 'personality-browse', text=lang['personality-browse'], image='')
         tv.insert('working_db', 'end', 'personality-stats', text=lang['personality_stats'], image='')
 
         # Children for "Data Analysis"
-        tv.insert('data_analysis', 'end', 'personality-analysis', text=lang['personality_analysis'], image='')
-        tv.insert('data_analysis', 'end', 'mahalanobis', text=lang['mahalanobis_distance'], image='')
-        tv.insert('data_analysis', 'end', 'multi_mahalanobis', text=lang['multi_mahalanobis_distance'], image='')
-        tv.insert('data_analysis', 'end', 'single_density', text=lang['single_density_analysis'], image='')
+        tv.insert('data_analysis', 'end', 'individual_level', text=lang['individual_level'], image='')
+        tv.insert('data_analysis', 'end', 'group_level', text=lang['group_level'], image='')
         tv.insert('data_analysis', 'end', 'ocean_density', text=lang.get('ocean_density_analysis', 'OCEAN Dimension Density Analysis'), image='')
-        tv.insert('data_analysis', 'end', 'clustering', text=lang['clustering_analysis'], image='')
-        tv.insert('data_analysis', 'end', 'manual_clustering', text=lang['manual_clustering_analysis'], image='')
-        tv.insert('data_analysis', 'end', 'tsne', text=lang['tsne_analysis'], image='')
-        tv.insert('data_analysis', 'end', 'comparison', text=lang['comparison_analysis'], image='')
-        tv.insert('data_analysis', 'end', 'consistency', text=lang['consistency_analysis'], image='')
-        tv.insert('data_analysis', 'end', 'factor', text=lang['factor_analysis'], image='')
-        tv.insert('data_analysis', 'end', 'cfa', text=lang['cfa_analysis'], image='')
+        tv.insert('data_analysis', 'end', 'other_analysis', text=lang['other_analysis'], image='')
+
+        # Children for "Group Level"
+        tv.insert('group_level', 'end', 'age-personality-curve', text=lang['age_personality_curve'], image='')
+
+        # Children for "Other Analysis"
+        tv.insert('other_analysis', 'end', 'tsne', text=lang['tsne_analysis'], image='')
+        tv.insert('other_analysis', 'end', 'comparison', text=lang['comparison_analysis'], image='')
+        tv.insert('other_analysis', 'end', 'consistency', text=lang['consistency_analysis'], image='')
+        tv.insert('other_analysis', 'end', 'factor', text=lang['factor_analysis'], image='')
+        tv.insert('other_analysis', 'end', 'cfa', text=lang['cfa_analysis'], image='')
+
+        # Children for "Individual Level"
+        tv.insert('individual_level', 'end', 'mahalanobis', text=lang['mahalanobis_distance'], image='')
+        tv.insert('individual_level', 'end', 'multi_mahalanobis', text=lang['multi_mahalanobis_analysis'], image='')
+        tv.insert('individual_level', 'end', 'folder_clustering', text=lang['folder_clustering_analysis'], image='')
+        tv.insert('individual_level', 'end', 'file_clustering', text=lang['file_clustering_analysis'], image='')
 
         # Children for "Special Analysis"
-        tv.insert('special_analysis', 'end', 'stability', text=lang['stability_analysis'], image='')
-        tv.insert('special_analysis', 'end', 'identifiability', text=lang['identifiability_analysis'], image='')
-        tv.insert('special_analysis', 'end', 'group_identifiability', text=lang['group_identifiability_analysis'], image='')
-        tv.insert('special_analysis', 'end', 'single_identifiability', text=lang['single_identifiability_analysis'], image='')
-        tv.insert('special_analysis', 'end', 'curve_comparison', text='年龄维度曲线对比 (deepseek)', image='')
-        tv.insert('special_analysis', 'end', 'raw_comparison', text='正常生成画像曲线分析', image='')
-        tv.insert('special_analysis', 'end', 'antialign_comparison', text='抗对齐vs正常生成对比', image='')
-        tv.insert('special_analysis', 'end', 'narrative_comparison', text='叙事vs抗对齐vs正常生成对比', image='')
+        tv.insert('special_analysis', 'end', 'special_individual_level', text='个体水平', image='')
+        tv.insert('special_analysis', 'end', 'special_group_level', text='群体水平', image='')
+
+        # Children for "Special Analysis - Individual Level"
+        tv.insert('special_individual_level', 'end', 'stability_analysis', text=lang['stability_analysis'], image='')
+        tv.insert('special_individual_level', 'end', 'identifiability', text=lang['identifiability_analysis'], image='')
+        tv.insert('special_individual_level', 'end', 'group_identifiability', text=lang['group_identifiability_analysis'], image='')
+        tv.insert('special_individual_level', 'end', 'single_identifiability', text=lang['single_identifiability_analysis'], image='')
+
+        # Children for "Special Analysis - Group Level"
+        tv.insert('special_group_level', 'end', 'curve_comparison', text='年龄维度曲线对比 (deepseek)', image='')
+        tv.insert('special_group_level', 'end', 'raw_comparison', text='正常生成画像曲线分析', image='')
+        tv.insert('special_group_level', 'end', 'antialign_comparison', text='抗对齐vs正常生成对比', image='')
+        tv.insert('special_group_level', 'end', 'narrative_comparison', text='叙事vs抗对齐vs正常生成对比', image='')
         
         tv.item('working_db', open=True)
         tv.item('data_analysis', open=True)
@@ -340,15 +337,15 @@ class MainWindow:
         
         # Map treeview item ID to panel key
         panel_key_map = {
-            'personality': 'personality',
-            'personality-analysis': 'personality-analysis',
+            'personality-browse': 'personality-browse',
+            'age-personality-curve': 'age-personality-curve',
             'personality-stats': 'personality-stats',
             'mahalanobis': 'mahalanobis',
+            'stability_analysis': 'stability_analysis',
             'multi_mahalanobis': 'multi_mahalanobis',
-            'single_density': 'single_density',
             'ocean_density': 'ocean_density',
-            'clustering': 'clustering',
-            'manual_clustering': 'manual_clustering',
+            'folder_clustering': 'folder_clustering',
+            'file_clustering': 'file_clustering',
             'tsne': 'tsne',
             'comparison': 'comparison',
             'consistency': 'consistency',

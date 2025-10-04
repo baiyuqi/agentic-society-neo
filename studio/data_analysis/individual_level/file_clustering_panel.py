@@ -1,4 +1,4 @@
-# studio/clustering_panel.py
+# studio/manual_clustering_panel.py
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -14,7 +14,7 @@ from scipy.spatial.distance import pdist, squareform
 from tkhtmlview import HTMLScrolledText
 
 from asociety.personality.analysis_utils import (
-    load_profiles_from_directory,
+    load_personality_data,
     get_combined_and_scaled_data,
     run_kmeans_analysis,
     run_pca
@@ -26,11 +26,12 @@ from studio.analysis_panel_utils import show_analysis_window
 
 from studio.help_constants import helpcnstants
 
-class ClusteringPanel:
+class FileClusteringPanel:
     def __init__(self, parent):
         self.main = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
         self.fig = None
         self.analysis_results = {}
+        self.selected_files = []
 
         main_content_frame = ttk.Frame(self.main)
         self.main.add(main_content_frame, weight=3)
@@ -38,19 +39,30 @@ class ClusteringPanel:
         control_frame = ttk.Frame(main_content_frame)
         control_frame.pack(fill=tk.X, padx=10, pady=10)
 
-        self.dir_label = ttk.Label(control_frame, text="Selected Directory: None")
-        self.dir_label.pack(side=tk.LEFT, padx=(0, 10))
+        # File selection controls
+        file_selection_frame = ttk.Frame(control_frame)
+        file_selection_frame.pack(fill=tk.X, pady=5)
 
-        browse_button = ttk.Button(control_frame, text="Browse Directory...", command=self.browse_directory)
-        browse_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.file_list_label = ttk.Label(file_selection_frame, text="Selected Files: None")
+        self.file_list_label.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.analyze_button = ttk.Button(control_frame, text="Run Clustering", command=self.start_analysis, state=tk.DISABLED)
+        add_file_button = ttk.Button(file_selection_frame, text="Add File...", command=self.add_file)
+        add_file_button.pack(side=tk.LEFT, padx=(0, 10))
+
+        clear_files_button = ttk.Button(file_selection_frame, text="Clear Files", command=self.clear_files)
+        clear_files_button.pack(side=tk.LEFT, padx=(0, 10))
+
+        # Analysis controls
+        analysis_frame = ttk.Frame(control_frame)
+        analysis_frame.pack(fill=tk.X, pady=5)
+
+        self.analyze_button = ttk.Button(analysis_frame, text="Run Clustering", command=self.start_analysis, state=tk.DISABLED)
         self.analyze_button.pack(side=tk.LEFT, padx=(0, 10))
-        
-        self.qwen_button = ttk.Button(control_frame, text="结果解析 (AI)", command=self.start_qwen_analysis, state=tk.DISABLED)
+
+        self.qwen_button = ttk.Button(analysis_frame, text="结果解析 (AI)", command=self.start_qwen_analysis, state=tk.DISABLED)
         self.qwen_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.copy_button = ttk.Button(control_frame, text="Copy Data (JSON)", command=self.copy_analysis_data_to_clipboard, state=tk.DISABLED)
+        self.copy_button = ttk.Button(analysis_frame, text="Copy Data (JSON)", command=self.copy_analysis_data_to_clipboard, state=tk.DISABLED)
         self.copy_button.pack(side=tk.LEFT, padx=(0, 10))
 
         self.progress_manager = ProgressManager(self.main)
@@ -64,24 +76,24 @@ class ClusteringPanel:
 
         self.data_frame = ttk.Frame(self.results_paned_window)
         self.results_paned_window.add(self.data_frame, weight=1)
-        
+
         self.canvas = None
-        self.selected_directory = None
         self.metrics_tree = None
 
         self.current_lang = 'zh'
-        help_config = {"title": "聚类分析帮助", "content": helpcnstants['clustering']['zh']}
+        help_config = {"title": "手动聚类分析帮助", "content": helpcnstants['manual_clustering']['zh']}
         self.collapsible_help = CollapsibleHelpPanel(self.main, help_config, weight=1)
 
-    def browse_directory(self):
-        dir_path = filedialog.askdirectory(
-            title='Select a directory containing multiple persona DBs',
+    def add_file(self):
+        file_path = filedialog.askopenfilename(
+            title='Select a persona database file',
+            filetypes=[('SQLite Database', '*.db')],
             initialdir='data/db/backup'
         )
-        if dir_path:
-            self.selected_directory = dir_path
-            self.dir_label.config(text=f"Selected Directory: ...{os.path.basename(dir_path)}")
-            self.analyze_button.config(state=tk.NORMAL)
+        if file_path and file_path not in self.selected_files:
+            self.selected_files.append(file_path)
+            self.update_file_list_label()
+            self.analyze_button.config(state=tk.NORMAL if len(self.selected_files) >= 2 else tk.DISABLED)
             self.qwen_button.config(state=tk.DISABLED)
             self.copy_button.config(state=tk.DISABLED)
             if self.canvas:
@@ -91,19 +103,53 @@ class ClusteringPanel:
                 self.metrics_tree.destroy()
                 self.metrics_tree = None
 
+    def clear_files(self):
+        self.selected_files = []
+        self.update_file_list_label()
+        self.analyze_button.config(state=tk.DISABLED)
+        self.qwen_button.config(state=tk.DISABLED)
+        self.copy_button.config(state=tk.DISABLED)
+        if self.canvas:
+            self.canvas.get_tk_widget().destroy()
+            self.canvas = None
+        if self.metrics_tree:
+            self.metrics_tree.destroy()
+            self.metrics_tree = None
+
+    def update_file_list_label(self):
+        if not self.selected_files:
+            self.file_list_label.config(text="Selected Files: None")
+        else:
+            file_names = [os.path.basename(f) for f in self.selected_files]
+            if len(file_names) <= 3:
+                display_text = f"Selected Files: {', '.join(file_names)}"
+            else:
+                display_text = f"Selected Files: {len(file_names)} files ({', '.join(file_names[:3])}...)"
+            self.file_list_label.config(text=display_text)
+
     def start_analysis(self):
-        if not self.selected_directory:
+        if len(self.selected_files) < 2:
+            messagebox.showwarning("Insufficient Files", "Please select at least 2 files for clustering analysis.")
             return
-        
+
         self.qwen_button.config(state=tk.DISABLED)
         self.copy_button.config(state=tk.DISABLED)
 
         def analysis_task(progress_dialog):
             progress_dialog.update_message("正在加载画像数据...")
-            profile_dataframes, profile_names = load_profiles_from_directory(self.selected_directory)
+            profile_dataframes = []
+            profile_names = []
+
+            for file_path in self.selected_files:
+                try:
+                    df = load_personality_data(file_path)
+                    profile_dataframes.append(df)
+                    profile_names.append(os.path.basename(file_path))
+                except Exception as e:
+                    raise Exception(f"Error loading {file_path}: {e}")
 
             if progress_dialog.is_cancelled(): return None
-            
+
             progress_dialog.update_message("正在处理和标准化数据...")
             scaled_vectors, true_labels = get_combined_and_scaled_data(profile_dataframes)
 
@@ -122,9 +168,9 @@ class ClusteringPanel:
 
             progress_dialog.update_message("正在计算聚类中心距离...")
             centroids = kmeans.cluster_centers_
-            
+
             centroid_distances_condensed = pdist(centroids, 'euclidean')
-            
+
             centroid_distance_matrix = squareform(centroid_distances_condensed)
 
             avg_dist = np.mean(centroid_distances_condensed) if centroid_distances_condensed.size > 0 else 0
@@ -183,11 +229,11 @@ class ClusteringPanel:
 
             if self.canvas:
                 self.canvas.get_tk_widget().destroy()
-            
+
             self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
             self.canvas.draw()
             self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-            
+
             # --- Metrics Table ---
             self.display_metrics_table(result)
 
@@ -214,7 +260,7 @@ class ClusteringPanel:
         self.metrics_tree.insert('', 'end', values=('Average Centroid Distance', f"{results.get('average_centroid_distance', 0):.4f}"))
         self.metrics_tree.insert('', 'end', values=('Min Centroid Distance', f"{results.get('min_centroid_distance', 0):.4f}"))
         self.metrics_tree.insert('', 'end', values=('Max Centroid Distance', f"{results.get('max_centroid_distance', 0):.4f}"))
-        
+
         pca_variance = results.get('explained_variance', [0, 0])
         self.metrics_tree.insert('', 'end', values=('PCA Explained Variance', f"PC1: {pca_variance[0]:.2%}, PC2: {pca_variance[1]:.2%}"))
 
@@ -241,14 +287,15 @@ class ClusteringPanel:
                     "max_centroid_distance": self.analysis_results.get('max_centroid_distance'),
                     "centroid_distance_matrix": self.analysis_results.get('centroid_distance_matrix')
                 },
-                "profile_names": self.analysis_results.get('profile_names')
+                "profile_names": self.analysis_results.get('profile_names'),
+                "selected_files": self.selected_files
             }
-            
+
             json_data = json.dumps(data_to_export, indent=4)
 
             self.main.clipboard_clear()
             self.main.clipboard_append(json_data)
-            
+
             messagebox.showinfo("Copied", "Analysis data has been copied to the clipboard in JSON format.")
 
         except Exception as e:
@@ -262,7 +309,7 @@ class ClusteringPanel:
         def analysis_task(progress_dialog):
             progress_dialog.update_message("正在准备图片数据...")
             image_bytes = save_figure_to_bytes(self.fig)
-            
+
             if progress_dialog.is_cancelled(): return None
 
             progress_dialog.update_message("正在构建分析提示...")
@@ -290,10 +337,10 @@ class ClusteringPanel:
     def _build_clustering_prompt(self):
         ari_score = self.analysis_results.get('ari_score', 'N/A')
         profile_names = self.analysis_results.get('profile_names', [])
-        
+
         return f"""
 你是一位专业的数据科学家，你的任务是解读K-Means聚类分析的结果。
-下面是一张PCA降维后的散点图和相应的“调整兰德指数”(ARI)。
+下面是一张PCA降维后的散点图和相应的"调整兰德指数"(ARI)。
 
 **背景信息:**
 - **目标**: 评估多个AI智能体画像的可区分性。我们想知道这些画像在性格测试结果上是否表现出独有的、可被算法识别的特征。实验设计是：对几个persona反复进行性格测试，然后使用K-Means聚类算法来判断这些画像的性格是否可以被成功区分。
@@ -315,38 +362,13 @@ class ClusteringPanel:
 请用清晰、结构化的方式给出你的分析。
 """
 
-    def show_analysis_window(self, analysis_text):
-        top = tk.Toplevel(self.main)
-        top.title("AI 结果解析")
-        top.geometry("800x600")
-
-        html_frame = ttk.Frame(top)
-        html_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        html_content = markdown.markdown(analysis_text)
-        
-        html_widget = HTMLScrolledText(
-            html_frame,
-            html=html_content,
-            background="#ffffff",
-            foreground="#333333",
-            font=("Microsoft YaHei", 9),
-            wrap="word",
-            padx=12,
-            pady=12,
-            spacing1=3,
-            spacing2=1,
-            spacing3=3
-        )
-        html_widget.pack(fill=tk.BOTH, expand=True)
-
     def set_language(self, lang):
         self.current_lang = lang
         self.update_help_content()
 
     def update_help_content(self):
-        title = "聚类分析帮助" if self.current_lang == 'zh' else "Clustering Analysis Help"
-        content = helpcnstants['clustering'][self.current_lang]
+        title = "手动聚类分析帮助" if self.current_lang == 'zh' else "Manual Clustering Analysis Help"
+        content = helpcnstants['manual_clustering'][self.current_lang]
 
         if hasattr(self, 'collapsible_help'):
             self._update_collapsible_help_content(self.collapsible_help, title, content)

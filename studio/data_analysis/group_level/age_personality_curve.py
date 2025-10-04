@@ -5,7 +5,7 @@ from asociety.personality.personality_analysis import get_personas_ana
 from studio.base_curve_panel import BaseCurvePanel
 from studio.languages import LANGUAGES
 
-class PersonalityAnalysis(BaseCurvePanel):
+class AgePersonalityCurve(BaseCurvePanel):
     def __init__(self, parent):
         self.selected_file = None
         super().__init__(parent)

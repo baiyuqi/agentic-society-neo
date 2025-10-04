@@ -77,7 +77,7 @@ class SingleDensityPanel:
         self.results = {}
 
         self.current_lang = 'zh'
-        help_config = {"title": "单图密度分析帮助", "content": helpcnstants['single_density']['zh']}
+        help_config = {"title": "马氏距离分析帮助", "content": helpcnstants['single_density']['zh']}
         self.collapsible_help = CollapsibleHelpPanel(self.main, help_config, weight=1)
 
     def add_file(self):
@@ -208,7 +208,7 @@ class SingleDensityPanel:
 
         self.progress_manager.run_with_progress(
             analysis_task,
-            title="单图密度分析中...",
+            title="马氏距离分析中...",
             message="正在准备分析...",
             success_callback=on_success,
             error_callback=on_error
@@ -380,7 +380,7 @@ class SingleDensityPanel:
         self.update_help_content()
 
     def update_help_content(self):
-        title = "单图密度分析帮助" if self.current_lang == 'zh' else "Single Density Analysis Help"
+        title = "马氏距离分析帮助" if self.current_lang == 'zh' else "Mahalanobis Distance Analysis Help"
         content = helpcnstants['single_density'][self.current_lang]
 
         if hasattr(self, 'collapsible_help'):

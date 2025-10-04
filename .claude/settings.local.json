@@ -29,7 +29,9 @@
       "Bash(ls:*)",
       "Bash(find:*)",
       "Bash(curl:*)",
-      "Bash(poetry export:*)"
+      "Bash(poetry export:*)",
+      "Bash(mv:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []
