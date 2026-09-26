@@ -7,10 +7,17 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.patches import Patch
 
-from asociety.personality.analysis_utils import calculate_single_profile_mahalanobis
+from asociety.personality.analysis_utils import (
+    calculate_single_profile_mahalanobis, load_personality_data, PERSONALITY_TRAITS)
 from studio.progress_dialog import ProgressManager
 
 class MultiMahalanobisPanel:
+    # --- Instrument surface -----------------------------------------------------------
+    # The defaults reproduce the personality panel exactly; the value panel overrides them.
+    traits = PERSONALITY_TRAITS
+    table = 'personality'
+    data_dir = 'data/db/personality/individual'
+
     def __init__(self, parent):
         self.main = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
         
@@ -47,29 +54,29 @@ class MultiMahalanobisPanel:
         
         ttk.Label(persona_frame, text="选择Persona:").pack(side=tk.LEFT, padx=(0, 5))
         self.persona_var = tk.StringVar(value="1")
-        self.persona_combo = ttk.Combobox(persona_frame, textvariable=self.persona_var, 
-                                        values=["1", "2"], width=5, state='readonly')
+        self.persona_combo = ttk.Combobox(persona_frame, textvariable=self.persona_var,
+                                        values=["1", "2", "3", "4", "5"], width=5, state='readonly')
         self.persona_combo.pack(side=tk.LEFT)
         self.persona_combo.bind('<<ComboboxSelected>>', self.on_persona_change)
         
         # Data sources templates (will be updated with selected persona)
         self.data_source_templates = [
             {
-                'name': 'poor300',
-                'template': 'data/db/backup/poor300/deepseek-chat-single-poor-{}-300.db',
+                'name': 'poor',
+                'template': self.data_dir + '/persona{}/poor.db',
                 'color': 'red',
                 'label': 'Poor Quality'
             },
             {
-                'name': 'samples300', 
-                'template': 'data/db/backup/samples300/deepseek-chat-single-{}-300.db',
+                'name': 'standard',
+                'template': self.data_dir + '/persona{}/standard.db',
                 'color': 'blue',
                 'label': 'Standard Sample'
             },
             {
-                'name': 'narrative300',
-                'template': 'data/db/backup/samples-narrative300/deepseek-chat-single-{}-300-narra.db',
-                'color': 'green', 
+                'name': 'narrative',
+                'template': self.data_dir + '/persona{}/narrative.db',
+                'color': 'green',
                 'label': 'Narrative'
             }
         ]
@@ -110,11 +117,8 @@ class MultiMahalanobisPanel:
                 if not os.path.exists(source['path']):
                     raise FileNotFoundError(f"数据库文件不存在: {source['path']}")
                 
-                # Load personality data
-                from asociety.personality.analysis_utils import load_personality_data
-                df = load_personality_data(source['path'])
-                trait_columns = ['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism']
-                vectors = df[trait_columns].values
+                df = load_personality_data(source['path'], table=self.table, columns=self.traits)
+                vectors = df[self.traits].values
                 
                 all_data.append(vectors)
                 all_labels.extend([source['label']] * len(vectors))
@@ -126,11 +130,10 @@ class MultiMahalanobisPanel:
             combined_data = np.vstack(all_data)
             global_mean = np.mean(combined_data, axis=0)
             global_cov = np.cov(combined_data, rowvar=False)
-            
-            # Add regularization to ensure invertibility
-            regularization = 1e-6
-            global_cov += np.eye(global_cov.shape[0]) * regularization
-            global_inv_cov = np.linalg.inv(global_cov)
+
+            # Higher-order value/morality dimensions are linear combinations of the primary
+            # ones, so the covariance is rank-deficient; the pseudoinverse handles it.
+            global_inv_cov = np.linalg.pinv(global_cov)
             
             # Now calculate Mahalanobis distances using common reference
             for i, (source, data) in enumerate(zip(self.data_sources, all_data)):

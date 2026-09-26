@@ -108,7 +108,7 @@ class InternalConsistencyPanel:
             title=UI_TEXT[self.current_lang]['file_dialog_title'],
 
             filetypes=(("Database files", "*.db"), ("All files", "*.*")),
-            initialdir='data/db/backup'
+            initialdir='data/db/personality'
         )
         if filepath:
             self.db_path.set(filepath)

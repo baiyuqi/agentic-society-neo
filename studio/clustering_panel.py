@@ -17,7 +17,9 @@ from asociety.personality.analysis_utils import (
     load_profiles_from_directory,
     get_combined_and_scaled_data,
     run_kmeans_analysis,
-    run_pca
+    run_pca,
+    load_personality_data,
+    PERSONALITY_TRAITS
 )
 from asociety.generator.qwen_analyzer import analyze_image_with_text, save_figure_to_bytes
 from studio.collapsible_help_panel import CollapsibleHelpPanel
@@ -27,6 +29,15 @@ from studio.analysis_panel_utils import show_analysis_window
 from studio.help_constants import helpcnstants
 
 class ClusteringPanel:
+    # --- Instrument surface -----------------------------------------------------------
+    # The defaults reproduce the personality panel exactly; the value panel overrides them.
+    traits = PERSONALITY_TRAITS
+    table = 'personality'
+    initialdir = 'data/db/personality'
+
+    def loader(self, db_path):
+        return load_personality_data(db_path, table=self.table, columns=self.traits)
+
     def __init__(self, parent):
         self.main = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
         self.fig = None
@@ -76,7 +87,7 @@ class ClusteringPanel:
     def browse_directory(self):
         dir_path = filedialog.askdirectory(
             title='Select a directory containing multiple persona DBs',
-            initialdir='data/db/backup'
+            initialdir=self.initialdir
         )
         if dir_path:
             self.selected_directory = dir_path
@@ -100,7 +111,7 @@ class ClusteringPanel:
 
         def analysis_task(progress_dialog):
             progress_dialog.update_message("正在加载画像数据...")
-            profile_dataframes, profile_names = load_profiles_from_directory(self.selected_directory)
+            profile_dataframes, profile_names = load_profiles_from_directory(self.selected_directory, loader=self.loader)
 
             if progress_dialog.is_cancelled(): return None
             

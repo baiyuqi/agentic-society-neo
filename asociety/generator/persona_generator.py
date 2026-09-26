@@ -2,15 +2,14 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from langchain_core.output_parsers import StrOutputParser
-from asociety.generator.llm_engine import llm, from_skeleton
 from asociety.repository.persona_rep import get_unprocessed_skeletons, save_enriched_persona
 
 output_parser = StrOutputParser()
-chain = from_skeleton | llm | output_parser
 
 class PersonaGenerator:
     def __init__(self) -> None:
-        self.enricher = chain
+        from asociety.generator.llm_engine import get_llm, generation_templates
+        self.enricher = generation_templates() | get_llm() | output_parser
 
     def enrich_unprocessed_skeletons(self, max_workers=15):
         """

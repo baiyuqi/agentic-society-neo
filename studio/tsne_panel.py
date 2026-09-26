@@ -10,9 +10,11 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import markdown
 
 from asociety.personality.analysis_utils import (
-    load_profiles_from_directory, 
+    load_profiles_from_directory,
     get_combined_and_scaled_data,
-    run_tsne
+    run_tsne,
+    load_personality_data,
+    PERSONALITY_TRAITS
 )
 from asociety.generator.qwen_analyzer import save_figure_to_bytes, analyze_image_with_text
 from studio.collapsible_help_panel import CollapsibleHelpPanel
@@ -84,6 +86,15 @@ Finally, through optimization algorithms, it continuously adjusts the positions 
 }
 
 class TSNEPanel:
+    # --- Instrument surface -----------------------------------------------------------
+    # The defaults reproduce the personality panel exactly; the value panel overrides them.
+    traits = PERSONALITY_TRAITS
+    table = 'personality'
+    initialdir = 'data/db/personality'
+
+    def loader(self, db_path):
+        return load_personality_data(db_path, table=self.table, columns=self.traits)
+
     def __init__(self, parent):
         self.main = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
 
@@ -124,7 +135,7 @@ class TSNEPanel:
     def browse_directory(self):
         dir_path = filedialog.askdirectory(
             title='Select a directory containing multiple persona DBs',
-            initialdir='data/db/backup'
+            initialdir=self.initialdir
         )
         if dir_path:
             self.selected_directory = dir_path
@@ -142,7 +153,7 @@ class TSNEPanel:
         def analysis_task(progress_dialog):
             """实际的t-SNE分析任务"""
             progress_dialog.update_message("正在加载画像数据...")
-            profile_dataframes, profile_names = load_profiles_from_directory(self.selected_directory)
+            profile_dataframes, profile_names = load_profiles_from_directory(self.selected_directory, loader=self.loader)
 
             if progress_dialog.is_cancelled():
                 return None

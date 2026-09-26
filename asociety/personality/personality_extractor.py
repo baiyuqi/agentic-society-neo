@@ -45,7 +45,6 @@ def __parse_personality(pobj):
     ps = pobj['person']['result']['personalities']
     personality = Personality()
     personality.theory = pobj['theory']
-    personality.model = pobj['model']
     personality.question = pobj['question']
     import json
     pjson = json.dumps(pobj)

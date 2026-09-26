@@ -1,6 +1,5 @@
 import os
 from sqlalchemy import create_engine
-from asociety import config
 from sqlalchemy.orm import DeclarativeBase
 import threading
 
@@ -13,31 +12,10 @@ _engine = None
 _engine_lock = threading.Lock()
 
 def get_default_db_path():
-    """
-    Constructs the correct SQLite database path from the config setting.
-    It handles cases where the setting may or may not include the 'data/db/' prefix
-    and may or may not include the '.db' suffix.
-    """
-    db_setting = config.configuration['database']
-    
-    # The root of the project is three levels up from this file's location
-    # (asociety/repository/database.py -> asociety/ -> repository/ -> root)
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    # 1. Determine the correct relative path
-    if str(db_setting).startswith('data/db/'):
-        relative_path = db_setting
-    else:
-        relative_path = os.path.join('data', 'db', db_setting)
-
-    # 2. Ensure the path ends with .db
-    if not relative_path.endswith('.db'):
-        relative_path += '.db'
-        
-    # 3. Create the absolute path for the sqlite URI
-    absolute_path = os.path.join(project_root, relative_path).replace('\\', '/')
-    
-    return f'sqlite:///{absolute_path}'
+    """There is no default database: every entry point selects one explicitly."""
+    raise RuntimeError(
+        "No database selected. Call set_currentdb(db_path) or config.load_from_db(db_path) "
+        "before get_engine().")
 
 def get_engine():
     global _engine, _currentdb_path
@@ -76,5 +54,6 @@ def create_tables():
     """
     engine = get_engine()
     # The import is done here to avoid circular dependencies
-    from asociety.repository import persona_rep, personality_rep, experiment_rep
+    from asociety.repository import (persona_rep, personality_rep, experiment_rep, value_rep,
+                                     moral_rep, meta_rep)
     Base.metadata.create_all(engine)

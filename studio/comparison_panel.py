@@ -17,7 +17,8 @@ from asociety.personality.analysis_utils import (
     get_combined_and_scaled_data,
     run_pca,
     calculate_mahalanobis_distance,
-    load_personality_data
+    load_personality_data,
+    PERSONALITY_TRAITS
 )
 from studio.collapsible_help_panel import CollapsibleHelpPanel
 from studio.progress_dialog import ProgressManager
@@ -25,6 +26,15 @@ from studio.help_constants import helpcnstants
 HELP_CONTENT = helpcnstants['comparison']
 
 class ComparisonPanel:
+    # --- Instrument surface -----------------------------------------------------------
+    # The defaults reproduce the personality panel exactly; the value panel overrides them.
+    traits = PERSONALITY_TRAITS
+    table = 'personality'
+    initialdir = 'data/db/personality'
+
+    def loader(self, db_path):
+        return load_personality_data(db_path, table=self.table, columns=self.traits)
+
     def __init__(self, parent):
         self.main = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
 
@@ -146,7 +156,7 @@ class ComparisonPanel:
                 help_panel.html_widget.set_html(html_content)
 
     def browse_directory(self):
-        dir_path = filedialog.askdirectory(title='Select Directory for Comparison Analysis', initialdir='data/db/backup')
+        dir_path = filedialog.askdirectory(title='Select Directory for Comparison Analysis', initialdir=self.initialdir)
         if dir_path:
             self.selected_directory = dir_path
             self.dir_label.config(text=f"Selected Directory: {dir_path}")
@@ -160,14 +170,14 @@ class ComparisonPanel:
     def run_distribution_analysis(self):
         if not self.selected_directory: return
         try:
-            profile_dataframes, profile_names = load_profiles_from_directory(self.selected_directory)
+            profile_dataframes, profile_names = load_profiles_from_directory(self.selected_directory, loader=self.loader)
             scaled_vectors, true_labels = get_combined_and_scaled_data(profile_dataframes)
             principal_components, explained_variance = run_pca(scaled_vectors)
             
             if self.dist_canvas: self.dist_canvas.get_tk_widget().destroy()
 
             fig = plt.figure(figsize=(20, 10))
-            gs = fig.add_gridspec(2, 5)
+            gs = fig.add_gridspec(2, len(profile_dataframes[0].columns))
             fig.suptitle('Directory Distribution Comparison', fontsize=20, weight='bold')
 
             all_dfs = [df.assign(Profile=name) for df, name in zip(profile_dataframes, profile_names)]
@@ -202,7 +212,7 @@ class ComparisonPanel:
                 messagebox.showinfo("Info", "Need at least two .db files for heatmap comparison.")
                 return
 
-            profiles = {os.path.basename(p): load_personality_data(p) for p in db_files}
+            profiles = {os.path.basename(p): load_personality_data(p, table=self.table, columns=self.traits) for p in db_files}
             profile_names = list(profiles.keys())
             distance_matrix = pd.DataFrame(np.zeros((len(profile_names), len(profile_names))), index=profile_names, columns=profile_names)
 
@@ -238,7 +248,7 @@ class ComparisonPanel:
         def analysis_task(progress_dialog):
             """实际的分布分析任务"""
             progress_dialog.update_message("正在加载画像数据...")
-            profile_dataframes, profile_names = load_profiles_from_directory(self.selected_directory)
+            profile_dataframes, profile_names = load_profiles_from_directory(self.selected_directory, loader=self.loader)
 
             if progress_dialog.is_cancelled():
                 return None
@@ -258,7 +268,7 @@ class ComparisonPanel:
             progress_dialog.update_message("正在生成可视化图表...")
 
             fig = plt.figure(figsize=(20, 10))
-            gs = fig.add_gridspec(2, 5)
+            gs = fig.add_gridspec(2, len(profile_dataframes[0].columns))
             fig.suptitle('Directory Distribution Comparison', fontsize=20, weight='bold')
 
             all_dfs = [df.assign(Profile=name) for df, name in zip(profile_dataframes, profile_names)]
@@ -324,7 +334,7 @@ class ComparisonPanel:
             if len(db_files) < 2:
                 raise ValueError("Need at least two .db files for heatmap comparison.")
 
-            profiles = {os.path.basename(p): load_personality_data(p) for p in db_files}
+            profiles = {os.path.basename(p): load_personality_data(p, table=self.table, columns=self.traits) for p in db_files}
             profile_names = list(profiles.keys())
 
             if progress_dialog.is_cancelled():

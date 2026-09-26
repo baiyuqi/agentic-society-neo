@@ -48,7 +48,7 @@
 - 通过配置的测试方法处理人物画像
 - 生成全面的响应数据
 - 产生分析后的人格配置文件
-- 完成后，实验数据库通常手动复制到`data/db/backup/`目录进行后续统计分析
+- 完成后，实验数据库通常手动复制到`data/db/personality/backup/`目录进行后续统计分析
 - 备份数据库按实验类型和配置在备份目录中有序组织
 
 **抽象测试过程：**
@@ -97,7 +97,7 @@
 
 ## 2.3 数据结构
 
-数据存储在SQLite数据库(`data/db/agent-society.db`)中，包含：
+数据存储在SQLite数据库(`data/db/personality/agent-society.db`)中，包含：
 - `persona`：具有人口统计属性的丰富人物画像描述
 - `samples`：LLM丰富前的原始骨架数据
 - `question_answer`：单独问题响应
@@ -110,14 +110,20 @@
 1. **人物画像骨架生成**：从人口普查数据中人口统计采样
 2. **人物画像丰富**：基于LLM的描述生成
 3. **人格测试**：IPIP-NEO问卷管理
-4. **数据备份**：实验数据库复制到`data/db/backup/`进行保存
+4. **数据备份**：实验数据库复制到`data/db/personality/backup/`进行保存
 5. **统计分析**：使用备份数据进行特质提取和验证
 
 ## 2.5 安装
 
+依赖声明在`pyproject.toml`中，可用Poetry安装：
+
 ```bash
 poetry install
 ```
+
+运行脚本并不需要Poetry。每个入口脚本都会自己把仓库根目录加进`sys.path`，因此只要解释器
+已装好依赖，就可以在仓库根目录下直接运行（如`python tools/pipeline/pipeline.py`）。下文
+命令均采用这种直接形式。
 
 ## 2.6 说明
 
@@ -156,7 +162,7 @@ poetry install
 2. **细节水平影响**：对不同细节水平的人物画像进行相同实验，观察细节水平对可识别性的影响
 
 **实验结果位置：**
-- 个体水平实验结果存储在`data/db/backup/poor300`和`data/db/backup/samples300`目录
+- 个体水平实验结果存储在`data/db/personality/backup/poor300`和`data/db/personality/backup/samples300`目录
 
 **示例结果：**
 ![聚类分析 - 低细节](img/cluster-poor-300.jpg)
@@ -282,7 +288,7 @@ poetry install
 
 ## 3.3 实验数据备份结构
 
-实验结果根据实验设计在`data/db/backup/`目录中有系统地组织：
+实验结果根据实验设计在`data/db/personality/backup/`目录中有系统地组织：
 
 ### 3.3.1 个体水平实验数据（第3.1节）
 
@@ -315,7 +321,7 @@ poetry install
 
 ### 3.3.4 数据保存工作流程
 1. **实验执行**：流水线处理人物画像并在工作数据库中生成结果
-2. **数据备份**：完成的实验数据库手动复制到`data/db/backup/`
+2. **数据备份**：完成的实验数据库手动复制到`data/db/personality/backup/`
 3. **组织**：数据库按实验类型和配置组织
 4. **分析**：备份数据库加载到Agentic-Society-Studio进行统计分析
 
@@ -362,7 +368,7 @@ Agentic-Society-Studio是专门为已完成实验的人格测试结果可视化�
 
 ```bash
 # 从项目根目录启动工作室应用程序
-poetry run python -m studio.agent-society-studio
+python -m studio.agent-society-studio
 ```
 
 ## 4.4 工具类别详情
@@ -393,7 +399,7 @@ poetry run python -m studio.agent-society-studio
 
 ## 4.5 实验结果分析工作流程
 
-1. **加载实验数据库**：根据实验类型从`data/db/backup/`选择
+1. **加载实验数据库**：根据实验类型从`data/db/personality/backup/`选择
 2. **选择分析面板**：选择适当的分析工具：
    - 对于稳定性测试：使用稳定性分析面板
    - 对于可识别性：使用可识别性和聚类面板  
@@ -417,7 +423,7 @@ poetry run python -m studio.agent-society-studio
 
 ## 4.7 支持的实验数据
 
-- `data/db/backup/`中已完成实验的所有SQLite数据库
+- `data/db/personality/backup/`中已完成实验的所有SQLite数据库
 - 用于交叉验证的多个实验比较
 - 与两种测试方法（基于问题和基于表格）的集成
 - 支持不同的LLM配置和提示词变体
@@ -465,10 +471,10 @@ poetry run python -m studio.agent-society-studio
 **示例命令：**
 ```bash
 # 从源数据库复制100个随机样本到目标数据库
-poetry run python tools/pipeline/copy_random_samples.py --source_db data/db/source.db --dest_db data/db/experiment.db -n 100
+python tools/pipeline/copy_random_samples.py --source_db data/db/personality/source.db --dest_db data/db/personality/experiment.db -n 100
 
 # 验证数据库是否恰好包含100个样本
-poetry run python tools/pipeline/copy_random_samples.py --verify --db_path data/db/experiment.db -n 100
+python tools/pipeline/copy_random_samples.py --verify --db_path data/db/personality/experiment.db -n 100
 ```
 
 ### 5.1.2 create_persona_sample.py
@@ -477,7 +483,7 @@ poetry run python tools/pipeline/copy_random_samples.py --verify --db_path data/
 **示例命令：**
 ```bash
 # 为群体实验创建600个人物样本
-poetry run python tools/pipeline/create_persona_sample.py -n 600
+python tools/pipeline/create_persona_sample.py -n 600
 ```
 
 ### 5.1.3 generate_persona.py
@@ -486,7 +492,7 @@ poetry run python tools/pipeline/create_persona_sample.py -n 600
 **示例命令：**
 ```bash
 # 从样本骨架生成丰富的人物画像
-poetry run python tools/pipeline/generate_persona.py
+python tools/pipeline/generate_persona.py
 ```
 
 ### 5.1.4 pipeline.py
@@ -495,7 +501,7 @@ poetry run python tools/pipeline/generate_persona.py
 **示例命令：**
 ```bash
 # 运行完整的人格测试流水线
-poetry run python tools/pipeline/pipeline.py
+python tools/pipeline/pipeline.py
 ```
 
 ## 5.2 导入工具
@@ -506,7 +512,7 @@ poetry run python tools/pipeline/pipeline.py
 **示例命令：**
 ```bash
 # 导入IPIP-NEO-120问卷
-poetry run python tools/importers/import_ipip_set.py
+python tools/importers/import_ipip_set.py
 ```
 
 ### 5.2.2 import_human_data.py
@@ -515,7 +521,7 @@ poetry run python tools/importers/import_ipip_set.py
 **示例命令：**
 ```bash
 # 导入人类参考数据
-poetry run python tools/importers/import_human_data.py
+python tools/importers/import_human_data.py
 ```
 
 ### 5.2.3 import_wikidata_bios.py
@@ -524,7 +530,7 @@ poetry run python tools/importers/import_human_data.py
 **示例命令：**
 ```bash
 # 导入Wikidata人物传记
-poetry run python tools/importers/import_wikidata_bios.py
+python tools/importers/import_wikidata_bios.py
 ```
 
 ## 5.3 导出工具
@@ -535,7 +541,7 @@ poetry run python tools/importers/import_wikidata_bios.py
 **示例命令：**
 ```bash
 # 将人格答案导出到CSV
-poetry run python tools/exporters/export_personality_answers.py --output personality_data.csv
+python tools/exporters/export_personality_answers.py --output personality_data.csv
 ```
 
 ## 5.4 使用模式
@@ -543,25 +549,25 @@ poetry run python tools/exporters/export_personality_answers.py --output persona
 ### 实验设置工作流程：
 ```bash
 # 1. 导入问卷数据
-poetry run python tools/importers/import_ipip_set.py
+python tools/importers/import_ipip_set.py
 
 # 2. 创建人物样本
-poetry run python tools/pipeline/create_persona_sample.py -n 600
+python tools/pipeline/create_persona_sample.py -n 600
 
 # 3. 生成丰富的人物画像
-poetry run python tools/pipeline/generate_persona.py
+python tools/pipeline/generate_persona.py
 
 # 4. 运行人格测试
-poetry run python tools/pipeline/pipeline.py
+python tools/pipeline/pipeline.py
 ```
 
 ### 数据管理工作流程：
 ```bash
 # 为重点实验复制特定样本
-poetry run python tools/pipeline/copy_random_samples.py --source_db data/db/backup/population.db --dest_db data/db/target_experiment.db -n 50
+python tools/pipeline/copy_random_samples.py --source_db data/db/personality/backup/population.db --dest_db data/db/personality/target_experiment.db -n 50
 
 # 为外部分析导出结果
-poetry run python tools/exporters/export_personality_answers.py --output experiment_results.csv
+python tools/exporters/export_personality_answers.py --output experiment_results.csv
 ```
 
 # 6. 贡献者

@@ -11,6 +11,13 @@
 venv
 .venv
 data/db
+data/ESS/*.csv
+data/ESS/*.sav
+data/MFQ/human/*.csv
+data/thinkpersona/
+data/real-persona-chat/
+data/figures/
+data/subjective-world-model/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

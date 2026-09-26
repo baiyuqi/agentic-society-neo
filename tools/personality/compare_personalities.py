@@ -136,8 +136,8 @@ def compare_personalities(db_path1: str, db_path2: str):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Compare two personality profile experiment datasets for identifiability.')
-    parser.add_argument('--db1', type=str, default='data/db/backup/samples300/deepseek-chat-single-1-300.db', help='Path to the first profile database file.')
-    parser.add_argument('--db2', type=str, default='data/db/backup/samples300/deepseek-chat-single-2-300.db', help='Path to the second profile database file.')
+    parser.add_argument('--db1', type=str, default='data/db/personality/individual/persona1/standard.db', help='Path to the first profile database file.')
+    parser.add_argument('--db2', type=str, default='data/db/personality/individual/persona2/standard.db', help='Path to the second profile database file.')
     
     args = parser.parse_args()
     

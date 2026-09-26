@@ -5,11 +5,16 @@ from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import sessionmaker, declarative_base
 import json
 import os
+import sys
+
+# Running this as a script puts tools/importers/ (not the repo root) on sys.path, which hides
+# asociety.*; the same bootstrap is in import_pvq_set.py and import_ess_human.py.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from asociety.personality.ipipneo import IpipNeo
 
 # --- Database Setup ---
-DB_PATH = 'data/db/human.db'
+DB_PATH = 'data/db/personality/human.db'
 
 
 def setup_database():

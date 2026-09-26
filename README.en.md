@@ -42,7 +42,7 @@ The personality testing pipeline operates on a single database file to produce a
 - Processes personas through the configured testing method
 - Generates comprehensive response data
 - Produces analyzed personality profiles
-- Upon completion, the experimental database is typically manually copied to the `data/db/backup/` directory for subsequent statistical analysis
+- Upon completion, the experimental database is typically manually copied to the `data/db/personality/backup/` directory for subsequent statistical analysis
 - Backup databases are organized by experiment type and configuration in the backup directory
 
 **Abstract Testing Process:**
@@ -90,7 +90,7 @@ Both methods converge to a common extraction process:
 - `answer_extractor.py`: Unified answer processing for both methods
 
 ## 2.3 Data Structure
-Data is stored in SQLite database (`data/db/agent-society.db`) with:
+Data is stored in SQLite database (`data/db/personality/agent-society.db`) with:
 - `persona`: Enriched persona descriptions with demographic attributes
 - `samples`: Original skeleton data before LLM enrichment
 - `question_answer`: Individual question responses
@@ -102,13 +102,18 @@ The complete research workflow:
 1. **Persona Skeleton Generation**: Demographic sampling from census data
 2. **Persona Enrichment**: LLM-based description generation
 3. **Personality Testing**: IPIP-NEO questionnaire administration
-4. **Data Backup**: Experimental databases copied to `data/db/backup/` for preservation
+4. **Data Backup**: Experimental databases copied to `data/db/personality/backup/` for preservation
 5. **Statistical Analysis**: Trait extraction and validation using backup data
 
 ## 2.5 Installation
+Dependencies are declared in `pyproject.toml` and can be installed with Poetry:
 ```bash
 poetry install
 ```
+
+Poetry is not required to run the scripts. Every entry point puts the repo root on `sys.path`
+itself, so an interpreter that already has the dependencies installed can run them directly
+(`python tools/pipeline/pipeline.py`) from the repo root. The commands below use that plain form.
 
 ## 2.6 Instructions
 
@@ -147,7 +152,7 @@ Test the identifiability and distinctiveness of LLM-generated character personal
 2. **Detail Level Impact**: Conduct the same experiment with character profiles of different detail levels to observe the impact of detail level on identifiability
 
 **Experimental Results Location:**
-- Individual-level experiment results are stored in `data/db/backup/poor300` and `data/db/backup/samples300` directories
+- Individual-level experiment results are stored in `data/db/personality/backup/poor300` and `data/db/personality/backup/samples300` directories
 
 **Example Results:**
 ![Cluster Analysis - Poor Detail](img/cluster-poor-300.jpg)
@@ -273,7 +278,7 @@ Validation that LLM virtual character personality testing demonstrates progressi
 
 ## 3.3 Experimental Data Backup Structure
 
-The experimental results are systematically organized in the `data/db/backup/` directory according to experimental designs:
+The experimental results are systematically organized in the `data/db/personality/backup/` directory according to experimental designs:
 
 **Experimental Data Download:**  
 链接:https://pan.baidu.com/s/1UH1aIz85ckASXlCRRzBmUA?pwd=1234 提取码:1234  
@@ -310,7 +315,7 @@ Experimental databases follow the pattern: `{llm_model}-{experiment_type}-{confi
 
 ### 3.3.4 Data Preservation Workflow
 1. **Experiment Execution**: Pipeline processes personas and generates results in working database
-2. **Data Backup**: Completed experimental databases are manually copied to `data/db/backup/`
+2. **Data Backup**: Completed experimental databases are manually copied to `data/db/personality/backup/`
 3. **Organization**: Databases are organized by experiment type and configuration
 4. **Analysis**: Backup databases are loaded into Agentic-Society-Studio for statistical analysis
 
@@ -355,7 +360,7 @@ The studio is designed to analyze experimental results stored in the backup dire
 ## 4.3 Launching the Studio
 ```bash
 # Launch the studio application from the project root directory
-poetry run python -m studio.agent-society-studio
+python -m studio.agent-society-studio
 ```
 
 ## 4.4 Tool Category Details
@@ -386,7 +391,7 @@ These panels are optimized for the specific experimental data structures and res
 
 ## 4.5 Analysis Workflow for Experimental Results
 
-1. **Load Experimental Database**: Select from `data/db/backup/` based on experiment type
+1. **Load Experimental Database**: Select from `data/db/personality/backup/` based on experiment type
 2. **Select Analysis Panel**: Choose the appropriate analysis tool:
    - For stability tests: Use Stability Analysis Panel
    - For identifiability: Use Identifiability and Clustering Panels  
@@ -409,7 +414,7 @@ These panels are optimized for the specific experimental data structures and res
 - **Authenticity Gradient**: Analyze progression from standard → novel → human-created characters
 
 ## 4.7 Supported Experimental Data
-- All SQLite databases from completed experiments in `data/db/backup/`
+- All SQLite databases from completed experiments in `data/db/personality/backup/`
 - Multiple experiment comparison for cross-validation
 - Integration with both testing methods (question-based and sheet-based)
 - Support for different LLM configurations and prompt variants
@@ -457,10 +462,10 @@ Copies random samples between databases for experimental setup.
 **Example Commands:**
 ```bash
 # Copy 100 random samples from source to destination database
-poetry run python tools/pipeline/copy_random_samples.py --source_db data/db/source.db --dest_db data/db/experiment.db -n 100
+python tools/pipeline/copy_random_samples.py --source_db data/db/personality/source.db --dest_db data/db/personality/experiment.db -n 100
 
 # Verify a database contains exactly 100 samples
-poetry run python tools/pipeline/copy_random_samples.py --verify --db_path data/db/experiment.db -n 100
+python tools/pipeline/copy_random_samples.py --verify --db_path data/db/personality/experiment.db -n 100
 ```
 
 ### 5.1.2 create_persona_sample.py
@@ -469,7 +474,7 @@ Creates persona samples from census data for experimental populations.
 **Example Command:**
 ```bash
 # Create 600 persona samples for population experiments
-poetry run python tools/pipeline/create_persona_sample.py -n 600
+python tools/pipeline/create_persona_sample.py -n 600
 ```
 
 ### 5.1.3 generate_persona.py
@@ -478,7 +483,7 @@ Generates enriched persona descriptions using LLMs.
 **Example Command:**
 ```bash
 # Generate enriched personas from sample skeletons
-poetry run python tools/pipeline/generate_persona.py
+python tools/pipeline/generate_persona.py
 ```
 
 ### 5.1.4 pipeline.py
@@ -487,7 +492,7 @@ Main pipeline orchestrator for personality testing experiments.
 **Example Command:**
 ```bash
 # Run complete personality testing pipeline
-poetry run python tools/pipeline/pipeline.py
+python tools/pipeline/pipeline.py
 ```
 
 ## 5.2 Import Tools
@@ -498,7 +503,7 @@ Imports IPIP-NEO-120 question set into the database.
 **Example Command:**
 ```bash
 # Import IPIP-NEO-120 questionnaire
-poetry run python tools/importers/import_ipip_set.py
+python tools/importers/import_ipip_set.py
 ```
 
 ### 5.2.2 import_human_data.py
@@ -507,7 +512,7 @@ Imports human personality data for comparison studies.
 **Example Command:**
 ```bash
 # Import human reference data
-poetry run python tools/importers/import_human_data.py
+python tools/importers/import_human_data.py
 ```
 
 ### 5.2.3 import_wikidata_bios.py
@@ -516,7 +521,7 @@ Imports character biographies from Wikidata for literary character experiments.
 **Example Command:**
 ```bash
 # Import Wikidata character biographies
-poetry run python tools/importers/import_wikidata_bios.py
+python tools/importers/import_wikidata_bios.py
 ```
 
 ## 5.3 Export Tools
@@ -527,7 +532,7 @@ Exports personality answer data for external analysis.
 **Example Command:**
 ```bash
 # Export personality answers to CSV
-poetry run python tools/exporters/export_personality_answers.py --output personality_data.csv
+python tools/exporters/export_personality_answers.py --output personality_data.csv
 ```
 
 ## 5.4 Usage Patterns
@@ -535,25 +540,25 @@ poetry run python tools/exporters/export_personality_answers.py --output persona
 ### Experimental Setup Workflow:
 ```bash
 # 1. Import questionnaire data
-poetry run python tools/importers/import_ipip_set.py
+python tools/importers/import_ipip_set.py
 
 # 2. Create persona samples
-poetry run python tools/pipeline/create_persona_sample.py -n 600
+python tools/pipeline/create_persona_sample.py -n 600
 
 # 3. Generate enriched personas
-poetry run python tools/pipeline/generate_persona.py
+python tools/pipeline/generate_persona.py
 
 # 4. Run personality testing
-poetry run python tools/pipeline/pipeline.py
+python tools/pipeline/pipeline.py
 ```
 
 ### Data Management Workflow:
 ```bash
 # Copy specific samples for focused experiments
-poetry run python tools/pipeline/copy_random_samples.py --source_db data/db/backup/population.db --dest_db data/db/target_experiment.db -n 50
+python tools/pipeline/copy_random_samples.py --source_db data/db/personality/backup/population.db --dest_db data/db/personality/target_experiment.db -n 50
 
 # Export results for external analysis
-poetry run python tools/exporters/export_personality_answers.py --output experiment_results.csv
+python tools/exporters/export_personality_answers.py --output experiment_results.csv
 ```
 
 # 6. Contribution

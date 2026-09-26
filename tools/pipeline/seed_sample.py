@@ -57,10 +57,10 @@ def copy_persona(src_db, persona_id, count, dst_db):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='从一个数据库的persona表拷贝样本到另一个库')
-    parser.add_argument('--src-db', type=str,  default='data/db/seed.db',help='源数据库文件路径')
+    parser.add_argument('--src-db', type=str,  default='data/db/personality/seed.db',help='源数据库文件路径')
     parser.add_argument('--id', type=int, required=True, help='要拷贝的persona记录的ID')
     parser.add_argument('--count', type=int, required=True, help='要拷贝的记录数量')
-    parser.add_argument('--dst-db', type=str, default='data/db/deepseek-chat-single-poor-2-300.db', help='目标数据库文件路径')
+    parser.add_argument('--dst-db', type=str, default='data/db/personality/deepseek-chat-single-poor-2-300.db', help='目标数据库文件路径')
 
     args = parser.parse_args()
 

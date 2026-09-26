@@ -78,7 +78,7 @@ def analyze_personality_pca(db_path: str):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Analyze personality data distribution using PCA.')
-    parser.add_argument('--db-path', type=str, default='data/db/backup/samples300/deepseek-chat-single-1-300.db', help='Path to the SQLite database file.')
+    parser.add_argument('--db-path', type=str, default='data/db/personality/individual/persona1/standard.db', help='Path to the SQLite database file.')
     
     args = parser.parse_args()
     

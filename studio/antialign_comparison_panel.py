@@ -30,7 +30,7 @@ class AntialignComparisonPanel(BaseCurvePanel):
     def get_data_sources(self):
         # Include both normal deepseek-chat and antialign version for comparison
         model_sources = [
-            {'name': 'deepseek-chat', 'path': 'data/db/backup/deepseek-chat.db', 'style': {'color': 'blue', 'lw': 2.0}},
-            {'name': 'deepseek-chat-antialign', 'path': 'data/db/backup/deepseek-chat-antialign.db', 'style': {'color': 'red', 'lw': 2.0}}
+            {'name': 'standard', 'path': 'data/db/personality/population/standard.db', 'style': {'color': 'blue', 'lw': 2.0}},
+            {'name': 'antialign', 'path': 'data/db/personality/population/antialign.db', 'style': {'color': 'red', 'lw': 2.0}}
         ]
         return model_sources

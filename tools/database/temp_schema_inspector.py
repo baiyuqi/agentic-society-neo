@@ -28,6 +28,6 @@ def inspect_table_schema(db_path, table_name):
 
 if __name__ == "__main__":
     # Hardcoded for our specific use case
-    db_file = "data/db/deepseek-chat.db"
+    db_file = "data/db/personality/population/standard.db"
     table_to_inspect = "personality"
     inspect_table_schema(db_file, table_to_inspect)

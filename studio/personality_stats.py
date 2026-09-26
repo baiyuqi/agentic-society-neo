@@ -76,7 +76,7 @@ class PersonalityStats:
     def browse_file(self):
         file_path = filedialog.askopenfilename(
             title='Select a persona DB file',
-            initialdir='data/db',
+            initialdir='data/db/personality',
             filetypes=[('SQLite DB', '*.db'), ('All Files', '*.*')]
         )
         if file_path:

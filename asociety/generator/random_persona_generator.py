@@ -1,15 +1,15 @@
 from asociety.generator.persona_skeleton_generator import *
 import json
 from langchain_core.output_parsers import StrOutputParser
-from asociety.generator.llm_engine import llm, from_void
+from asociety.generator.llm_engine import from_void
 
 output_parser = StrOutputParser()
-chain = llm | output_parser
 class PersonaGenerator:
     def __init__(self) -> None:
+        from asociety.generator.llm_engine import get_llm
 
         self.skeletonGenerator = PersonaSkeletonGeneratorFactory.create()
-        self.enricher = chain
+        self.enricher = get_llm() | output_parser
             
     def sampling(self, n):
        

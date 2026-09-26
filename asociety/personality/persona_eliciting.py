@@ -10,10 +10,9 @@ select persona.*, personality.* from personality LEFT JOIN persona on personalit
 
 '''
 
-from asociety.generator.llm_engine import llm, big_five_explain, personality_eliciting
+from asociety.generator.llm_engine import big_five_explain, personality_eliciting
 from langchain_core.output_parsers import StrOutputParser
 output_parser = StrOutputParser()
-chain = personality_eliciting | llm | output_parser
 def query_personalities():
     from sqlalchemy.orm import Session
     with Session(get_engine()) as session:
@@ -30,7 +29,9 @@ def big_five(bf:Personality):
     bfs = json.dumps(bf)
     return bfs
 def elicit(persona:Persona, personality:Personality):
+    from asociety.generator.llm_engine import get_llm
     bfp = big_five(personality)
+    chain = personality_eliciting | get_llm() | output_parser
     elicited = chain.invoke({'persona':persona.persona_desc, 'big_five_explain':big_five_explain, 'big_five_result':bfp})
     print(elicited)
 def save_elicited(per:Persona, elicited):

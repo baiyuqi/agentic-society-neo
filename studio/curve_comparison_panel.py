@@ -30,9 +30,11 @@ class CurveComparisonPanel(BaseCurvePanel):
 
     def get_data_sources(self):
         model_sources = [
-            {'name': 'deepseek-chat', 'path': 'data/db/backup/deepseek-chat.db', 'style': {'color': 'blue', 'lw': 0.8}},
-            {'name': 'deepseek-chat-antialign', 'path': 'data/db/backup/deepseek-chat-antialign.db', 'style': {'color': 'red', 'lw': 0.8}},
-            {'name': 'deepseek-chat-narrative', 'path': 'data/db/backup/deepseek-chat-narrative.db', 'style': {'color': 'green', 'lw': 2.5}},
-            {'name': 'wiki-fiction', 'path': 'data/db/backup/wiki/wiki-fiction.db', 'style': {'color': 'orange', 'ls': '-.'}}
+            {'name': 'standard', 'path': 'data/db/personality/population/standard.db', 'style': {'color': 'blue', 'lw': 0.8}},
+            {'name': 'antialign', 'path': 'data/db/personality/population/antialign.db', 'style': {'color': 'red', 'lw': 0.8}},
+            {'name': 'narrative', 'path': 'data/db/personality/population/narrative.db', 'style': {'color': 'green', 'lw': 2.5}},
+            {'name': 'wikifiction', 'path': 'data/db/personality/population/wikifiction.db', 'style': {'color': 'orange', 'ls': '-.'}},
+            {'name': 'thinkpersona', 'path': 'data/db/personality/population/thinkpersona.db', 'style': {'color': 'magenta', 'lw': 0.8}},
+            {'name': 'real-persona-chat', 'path': 'data/db/personality/population/real-persona-chat.db', 'style': {'color': 'cyan', 'ls': '--'}},
         ]
         return model_sources

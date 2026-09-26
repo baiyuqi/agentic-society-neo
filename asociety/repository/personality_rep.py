@@ -12,7 +12,6 @@ from asociety.repository.database import get_engine
 class Personality(Base):
     __tablename__ = "personality"
     persona_id: Mapped[int] =  Column(Integer, primary_key=True)
-    model:Mapped[str] = mapped_column(String(30),nullable=True)
     theory:  Mapped[str] = mapped_column(String(30),nullable=True)
     question: Mapped[int] =  Column(Integer)
     personality_json: Mapped[Optional[str]]

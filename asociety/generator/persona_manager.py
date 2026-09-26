@@ -6,12 +6,8 @@ in the database that do not yet have a full persona description.
 """
 
 import json
-from asociety.generator.llm_engine import llm, from_skeleton
 from asociety.repository.persona_rep import get_unprocessed_skeletons, save_enriched_persona
 from langchain_core.output_parsers import StrOutputParser
-
-# Setup the LLM chain for enrichment
-enricher_chain = from_skeleton | llm | StrOutputParser()
 
 def enrich_unprocessed_personas() -> int:
     """
@@ -66,7 +62,9 @@ def _llm_enrich_skeleton(skeleton_dict: dict) -> str:
         persona_json = json.dumps(skeleton_dict, ensure_ascii=False)
         
         # Invoke the chain to generate the description
-        enriched_desc = enricher_chain.invoke({"skeleton": persona_json})
+        from asociety.generator.llm_engine import get_llm, generation_templates
+        chain = generation_templates() | get_llm() | StrOutputParser()
+        enriched_desc = chain.invoke({"skeleton": persona_json})
         
         return enriched_desc
         

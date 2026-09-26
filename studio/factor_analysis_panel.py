@@ -114,7 +114,7 @@ class FactorAnalysisPanel:
         filepath = filedialog.askopenfilename(
             title="Select a database file",
             filetypes=(("Database files", "*.db"), ("All files", "*.*")),
-            initialdir='data/db/backup'
+            initialdir='data/db/personality'
         )
         if filepath:
             self.db_path.set(filepath)

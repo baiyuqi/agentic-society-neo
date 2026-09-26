@@ -8,13 +8,30 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from asociety.personality.analysis_utils import (
     load_profiles_from_directory,
+    load_personality_data,
     get_combined_and_scaled_data,
     run_kmeans_analysis,
-    run_pca
+    run_pca,
+    PERSONALITY_TRAITS
 )
 from studio.progress_dialog import ProgressManager
 
 class IdentifiabilityPanel:
+    # --- Instrument surface -----------------------------------------------------------
+    # The defaults reproduce the personality panel exactly; the value panel overrides them.
+    traits = PERSONALITY_TRAITS
+    table = 'personality'
+    dir_samples = "data/db/personality/individual"
+    dir_poor = "data/db/personality/individual"
+    pattern_samples = "persona*/standard.db"
+    pattern_poor = "persona*/poor.db"
+    label_samples = "标准样本 (Samples 300)"
+    label_poor = "贫乏样本 (Poor 300)"
+    title = "可识别性分析：比较标准样本与贫乏样本"
+
+    def loader(self, db_path):
+        return load_personality_data(db_path, table=self.table, columns=self.traits)
+
     def __init__(self, parent):
         self.main = ttk.Frame(parent)
         self.main.pack(fill=tk.BOTH, expand=True)
@@ -23,7 +40,7 @@ class IdentifiabilityPanel:
         control_frame = ttk.Frame(self.main)
         control_frame.pack(fill=tk.X, padx=10, pady=10)
         
-        title_label = ttk.Label(control_frame, text="可识别性分析：比较标准样本与贫乏样本", font=("Helvetica", 14, "bold"))
+        title_label = ttk.Label(control_frame, text=self.title, font=("Helvetica", 14, "bold"))
         title_label.pack(side=tk.LEFT, padx=(0, 20))
 
         self.run_button = ttk.Button(control_frame, text="运行分析", command=self.start_analysis)
@@ -54,24 +71,24 @@ class IdentifiabilityPanel:
         self.progress_manager = ProgressManager(self.main)
 
     def start_analysis(self):
-        dir_samples = "data/db/backup/samples300"
-        dir_poor = "data/db/backup/poor300"
+        dir_samples = self.dir_samples
+        dir_poor = self.dir_poor
 
         if not os.path.isdir(dir_samples) or not os.path.isdir(dir_poor):
-            messagebox.showerror("错误", "找不到所需的数据目录 'samples300' 或 'poor300'。")
+            messagebox.showerror("错误", f"找不到所需的数据目录 '{dir_samples}' 或 '{dir_poor}'。")
             return
 
         # --- Analysis Task Definition ---
         def analysis_task(progress_dialog):
             results = {}
             # Analyze Standard Samples
-            progress_dialog.update_message("正在分析标准样本 (samples300)...")
-            results['samples'] = self._run_single_analysis(dir_samples)
+            progress_dialog.update_message(f"正在分析 {os.path.basename(dir_samples)}...")
+            results['samples'] = self._run_single_analysis(dir_samples, self.pattern_samples)
             if progress_dialog.is_cancelled(): return None
-            
+
             # Analyze Poor Samples
-            progress_dialog.update_message("正在分析贫乏样本 (poor300)...")
-            results['poor'] = self._run_single_analysis(dir_poor)
+            progress_dialog.update_message(f"正在分析 {os.path.basename(dir_poor)}...")
+            results['poor'] = self._run_single_analysis(dir_poor, self.pattern_poor)
             if progress_dialog.is_cancelled(): return None
 
             return results
@@ -81,13 +98,13 @@ class IdentifiabilityPanel:
             if results:
                 if results.get('samples'):
                     self.display_results(
-                        results['samples'], self.ax_samples, self.canvas_samples, 
-                        self.ari_label_samples, "标准样本 (Samples 300)"
+                        results['samples'], self.ax_samples, self.canvas_samples,
+                        self.ari_label_samples, self.label_samples
                     )
                 if results.get('poor'):
                     self.display_results(
-                        results['poor'], self.ax_poor, self.canvas_poor, 
-                        self.ari_label_poor, "贫乏样本 (Poor 300)"
+                        results['poor'], self.ax_poor, self.canvas_poor,
+                        self.ari_label_poor, self.label_poor
                     )
 
         def on_error(error):
@@ -101,9 +118,10 @@ class IdentifiabilityPanel:
             error_callback=on_error
         )
 
-    def _run_single_analysis(self, directory):
+    def _run_single_analysis(self, directory, pattern):
         """Runs the clustering analysis for a single directory."""
-        profile_dataframes, profile_names = load_profiles_from_directory(directory)
+        profile_dataframes, profile_names = load_profiles_from_directory(
+            directory, loader=self.loader, pattern=pattern)
         if not profile_dataframes:
             raise ValueError(f"在目录 {directory} 中没有找到有效的数据库文件。")
             

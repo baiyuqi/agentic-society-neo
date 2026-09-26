@@ -9,8 +9,8 @@ import random
 from datetime import datetime
 
 # --- Configuration ---
-DB_DIRECTORY = "data/db"
-DB_PATH = os.path.join(DB_DIRECTORY, "wiki-fiction.db")
+DB_DIRECTORY = "data/db/personality/population"
+DB_PATH = os.path.join(DB_DIRECTORY, "wikifiction.db")
 TABLE_NAME = "persona"
 WIKIDATA_SPARQL_URL = "https://query.wikidata.org/sparql"
 USER_AGENT = "AgenticSociety/1.0 (https://github.com/ByteDance/agentic-society; contact@example.com)"

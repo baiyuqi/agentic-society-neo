@@ -13,7 +13,7 @@ You can switch databases using the --database option or set-db command.
 
 Usage:
     python persona_cli.py status
-    python persona_cli.py set-db --path data/db/mydb.db
+    python persona_cli.py set-db --path data/db/personality/mydb.db
     python persona_cli.py add-skeletons --count 10
     python persona_cli.py enrich-empty
 """

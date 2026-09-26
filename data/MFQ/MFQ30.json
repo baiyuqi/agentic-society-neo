@@ -1,0 +1,272 @@
+{
+  "1": {
+    "en_neutral": "Whether or not someone suffered emotionally.",
+    "meta_data": {
+      "foundation": "Care/Harm",
+      "higher_order": "Individualizing",
+      "part": "relevance",
+      "upstream_id": "care_r1"
+    }
+  },
+  "2": {
+    "en_neutral": "Whether or not someone cared for someone weak or vulnerable.",
+    "meta_data": {
+      "foundation": "Care/Harm",
+      "higher_order": "Individualizing",
+      "part": "relevance",
+      "upstream_id": "care_r2"
+    }
+  },
+  "3": {
+    "en_neutral": "Whether or not someone was cruel.",
+    "meta_data": {
+      "foundation": "Care/Harm",
+      "higher_order": "Individualizing",
+      "part": "relevance",
+      "upstream_id": "care_r3"
+    }
+  },
+  "4": {
+    "en_neutral": "Whether or not some people were treated differently than others.",
+    "meta_data": {
+      "foundation": "Fairness/Cheating",
+      "higher_order": "Individualizing",
+      "part": "relevance",
+      "upstream_id": "fairness_r1"
+    }
+  },
+  "5": {
+    "en_neutral": "Whether or not someone acted unfairly.",
+    "meta_data": {
+      "foundation": "Fairness/Cheating",
+      "higher_order": "Individualizing",
+      "part": "relevance",
+      "upstream_id": "fairness_r2"
+    }
+  },
+  "6": {
+    "en_neutral": "Whether or not someone was denied their rights.",
+    "meta_data": {
+      "foundation": "Fairness/Cheating",
+      "higher_order": "Individualizing",
+      "part": "relevance",
+      "upstream_id": "fairness_r3"
+    }
+  },
+  "7": {
+    "en_neutral": "Whether or not someone's action showed love for their country.",
+    "meta_data": {
+      "foundation": "Loyalty/Betrayal",
+      "higher_order": "Binding",
+      "part": "relevance",
+      "upstream_id": "loyalty_r1"
+    }
+  },
+  "8": {
+    "en_neutral": "Whether or not someone did something to betray their group.",
+    "meta_data": {
+      "foundation": "Loyalty/Betrayal",
+      "higher_order": "Binding",
+      "part": "relevance",
+      "upstream_id": "loyalty_r2"
+    }
+  },
+  "9": {
+    "en_neutral": "Whether or not someone showed a lack of loyalty.",
+    "meta_data": {
+      "foundation": "Loyalty/Betrayal",
+      "higher_order": "Binding",
+      "part": "relevance",
+      "upstream_id": "loyalty_r3"
+    }
+  },
+  "10": {
+    "en_neutral": "Whether or not someone showed a lack of respect for authority.",
+    "meta_data": {
+      "foundation": "Authority/Subversion",
+      "higher_order": "Binding",
+      "part": "relevance",
+      "upstream_id": "authority_r1"
+    }
+  },
+  "11": {
+    "en_neutral": "Whether or not someone conformed to the traditions of society.",
+    "meta_data": {
+      "foundation": "Authority/Subversion",
+      "higher_order": "Binding",
+      "part": "relevance",
+      "upstream_id": "authority_r2"
+    }
+  },
+  "12": {
+    "en_neutral": "Whether or not an action caused chaos or disorder.",
+    "meta_data": {
+      "foundation": "Authority/Subversion",
+      "higher_order": "Binding",
+      "part": "relevance",
+      "upstream_id": "authority_r3"
+    }
+  },
+  "13": {
+    "en_neutral": "Whether or not someone violated standards of purity and decency.",
+    "meta_data": {
+      "foundation": "Sanctity/Degradation",
+      "higher_order": "Binding",
+      "part": "relevance",
+      "upstream_id": "sanctity_r1"
+    }
+  },
+  "14": {
+    "en_neutral": "Whether or not someone did something disgusting.",
+    "meta_data": {
+      "foundation": "Sanctity/Degradation",
+      "higher_order": "Binding",
+      "part": "relevance",
+      "upstream_id": "sanctity_r2"
+    }
+  },
+  "15": {
+    "en_neutral": "Whether or not someone acted in a way that God would approve of.",
+    "meta_data": {
+      "foundation": "Sanctity/Degradation",
+      "higher_order": "Binding",
+      "part": "relevance",
+      "upstream_id": "sanctity_r3"
+    }
+  },
+  "16": {
+    "en_neutral": "Compassion for those who are suffering is the most crucial virtue.",
+    "meta_data": {
+      "foundation": "Care/Harm",
+      "higher_order": "Individualizing",
+      "part": "agreement",
+      "upstream_id": "care_a1"
+    }
+  },
+  "17": {
+    "en_neutral": "One of the worst things a person could do is hurt a defenseless animal.",
+    "meta_data": {
+      "foundation": "Care/Harm",
+      "higher_order": "Individualizing",
+      "part": "agreement",
+      "upstream_id": "care_a2"
+    }
+  },
+  "18": {
+    "en_neutral": "It can never be right to kill a human being.",
+    "meta_data": {
+      "foundation": "Care/Harm",
+      "higher_order": "Individualizing",
+      "part": "agreement",
+      "upstream_id": "care_a3"
+    }
+  },
+  "19": {
+    "en_neutral": "When the government makes laws, the number one principle should be ensuring that everyone is treated fairly.",
+    "meta_data": {
+      "foundation": "Fairness/Cheating",
+      "higher_order": "Individualizing",
+      "part": "agreement",
+      "upstream_id": "fairness_a1"
+    }
+  },
+  "20": {
+    "en_neutral": "Justice is the most important requirement for a society.",
+    "meta_data": {
+      "foundation": "Fairness/Cheating",
+      "higher_order": "Individualizing",
+      "part": "agreement",
+      "upstream_id": "fairness_a2"
+    }
+  },
+  "21": {
+    "en_neutral": "I think it's morally wrong that rich children inherit a lot of money while poor children inherit nothing.",
+    "meta_data": {
+      "foundation": "Fairness/Cheating",
+      "higher_order": "Individualizing",
+      "part": "agreement",
+      "upstream_id": "fairness_a3"
+    }
+  },
+  "22": {
+    "en_neutral": "I am proud of my country's history.",
+    "meta_data": {
+      "foundation": "Loyalty/Betrayal",
+      "higher_order": "Binding",
+      "part": "agreement",
+      "upstream_id": "loyalty_a1"
+    }
+  },
+  "23": {
+    "en_neutral": "People should be loyal to their family members, even when they have done something wrong.",
+    "meta_data": {
+      "foundation": "Loyalty/Betrayal",
+      "higher_order": "Binding",
+      "part": "agreement",
+      "upstream_id": "loyalty_a2"
+    }
+  },
+  "24": {
+    "en_neutral": "It is more important to be a team player than to express oneself.",
+    "meta_data": {
+      "foundation": "Loyalty/Betrayal",
+      "higher_order": "Binding",
+      "part": "agreement",
+      "upstream_id": "loyalty_a3"
+    }
+  },
+  "25": {
+    "en_neutral": "Respect for authority is something all children need to learn.",
+    "meta_data": {
+      "foundation": "Authority/Subversion",
+      "higher_order": "Binding",
+      "part": "agreement",
+      "upstream_id": "authority_a1"
+    }
+  },
+  "26": {
+    "en_neutral": "Men and women each have different roles to play in society.",
+    "meta_data": {
+      "foundation": "Authority/Subversion",
+      "higher_order": "Binding",
+      "part": "agreement",
+      "upstream_id": "authority_a2"
+    }
+  },
+  "27": {
+    "en_neutral": "If I were a soldier and disagreed with my commanding officer's orders, I would obey anyway because that is my duty.",
+    "meta_data": {
+      "foundation": "Authority/Subversion",
+      "higher_order": "Binding",
+      "part": "agreement",
+      "upstream_id": "authority_a3"
+    }
+  },
+  "28": {
+    "en_neutral": "People should not do things that are disgusting, even if no one is harmed.",
+    "meta_data": {
+      "foundation": "Sanctity/Degradation",
+      "higher_order": "Binding",
+      "part": "agreement",
+      "upstream_id": "sanctity_a1"
+    }
+  },
+  "29": {
+    "en_neutral": "I would call some acts wrong on the grounds that they are unnatural.",
+    "meta_data": {
+      "foundation": "Sanctity/Degradation",
+      "higher_order": "Binding",
+      "part": "agreement",
+      "upstream_id": "sanctity_a2"
+    }
+  },
+  "30": {
+    "en_neutral": "Chastity is an important and valuable virtue.",
+    "meta_data": {
+      "foundation": "Sanctity/Degradation",
+      "higher_order": "Binding",
+      "part": "agreement",
+      "upstream_id": "sanctity_a3"
+    }
+  }
+}

@@ -30,6 +30,6 @@ class RawComparisonPanel(BaseCurvePanel):
     def get_data_sources(self):
         # Only include deepseek-chat for normal persona generation analysis
         model_sources = [
-            {'name': 'deepseek-chat', 'path': 'data/db/backup/deepseek-chat.db', 'style': {'color': 'blue', 'lw': 2.0}}
+            {'name': 'standard', 'path': 'data/db/personality/population/standard.db', 'style': {'color': 'blue', 'lw': 2.0}}
         ]
         return model_sources

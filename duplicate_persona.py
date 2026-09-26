@@ -53,6 +53,6 @@ def duplicate_persona_records(db_path):
 
 if __name__ == "__main__":
     # Process only the second database (first one already has duplicates)
-    db_path = "data/db/deepseek-single-300-narrative-2.db"
+    db_path = "data/db/personality/deepseek-single-300-narrative-2.db"
     print(f"\nProcessing {db_path}:")
     duplicate_persona_records(db_path)

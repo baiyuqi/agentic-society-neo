@@ -1,7 +1,6 @@
 from langchain_core.prompts import ChatPromptTemplate
 import json
 from langchain_core.output_parsers import StrOutputParser
-from asociety.generator.llm_engine import llm, from_skeleton
 from asociety.repository.database import get_engine
 
 from sqlalchemy.orm import Session
@@ -9,15 +8,29 @@ import pandas as pd
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
-with open('prompts/experiment.json', encoding='utf-8') as pjson:
-            from asociety import config
-            persona_prompt_name = config.configuration['question_prompt']
-            prompts = json.load(pjson)
-            qprompt = prompts['ipip_neo_120'][persona_prompt_name]
-            
-           
-            pjson.close()
 output_parser = StrOutputParser()
+
+
+def qprompt_text():
+    """The current DB's sheet prompt, resolved from meta at call time."""
+    from asociety import config
+    with open('prompts/experiment.json', encoding='utf-8') as f:
+        prompts = json.load(f)
+    return prompts[config.configuration['instrument']][config.configuration['question_prompt']]
+
+def sheet_count(length):
+    """How many sheets a question set is answered in.
+
+    Some instruments are too long for one prompt and have to be chunked (IPIP-NEO-120: 23.4k
+    chars -> 6 sheets of 20); others fit whole (PVQ-21: 5.5k chars, MFQ-30: about one IPIP sheet).
+    The instrument's `sheet_size` in asociety.config.INSTRUMENTS selects between the two: None
+    means the entire set goes in a single sheet. np.array_split divides the count by the sheet
+    *number*, so the chunks come out ceil(length / sheet_size) wide."""
+    from asociety import config
+    size = config.sheet_size()
+    if not size:
+        return 1
+    return -(-length // size)
 
 def update_task(record):
         
@@ -34,13 +47,10 @@ def update_task(record):
         session.commit()
         
 def getAnwser(persona,sheet):
-     
-
-        question_prompt = ChatPromptTemplate.from_template(qprompt)
-        pro = question_prompt.invoke({"persona":persona,"sheet":sheet})
-        chain = question_prompt | llm | output_parser
+        from asociety.generator.llm_engine import get_llm
+        question_prompt = ChatPromptTemplate.from_template(qprompt_text())
+        chain = question_prompt | get_llm() | output_parser
         anwser = chain.invoke({"persona":persona,"sheet":sheet})
-        
         return anwser
 def parse(response):
         import re
@@ -92,12 +102,18 @@ def execute_tasks():
 def create_tasks():
     from asociety.repository.database import get_engine
     from asociety.repository.persona_rep import Persona
-    from asociety.repository.experiment_rep import QuizAnswer
+    from asociety.repository.experiment_rep import QuizAnswer, Question
 
     with Session(get_engine()) as session:
         persona_count = session.query(Persona).count()
         answer_count = session.query(QuizAnswer).count()
-        expected_count = persona_count * 6
+        question_count = session.query(Question).count()
+        if question_count == 0:
+            raise Exception("question table is empty. Import an item set first "
+                            "(e.g. tools/importers/import_pvq_set.py).")
+        # 与 create_sheets 的分组方式一致
+        n_sheets = sheet_count(question_count)
+        expected_count = persona_count * n_sheets
 
         if answer_count == expected_count:
             print(f"quiz_answer table is already populated with {answer_count} records. Skipping task creation.")
@@ -112,8 +128,8 @@ def create_tasks():
         # pids 是 [(1,), (2,), ...]，需要扁平化
         pdf = pd.DataFrame([pid[0] for pid in pids], columns=['persona_id'])
 
-        # 假设 sheet_id 是 1,2,3,4,5,6
-        sdf = pd.DataFrame([1, 2, 3, 4, 5, 6], columns=['sheet_id'])
+        # sheet_id 依次为 1..n_sheets
+        sdf = pd.DataFrame(range(1, n_sheets + 1), columns=['sheet_id'])
 
         # 笛卡尔积
         pdf['key'] = 1
@@ -162,8 +178,8 @@ def create_sheets():
             print("No questions found in the 'question' table. Cannot create sheets.")
             return
 
-        # 3️⃣ 每 20 个问题分一组
-        n = (length + 19) // 20 # 更简洁的计算方式
+        # 3️⃣ 决定切几卷
+        n = sheet_count(length)
 
         subs = np.array_split(qids, n)
 

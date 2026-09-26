@@ -26,6 +26,6 @@ def inspect_first_record(db_path, table_name):
             conn.close()
 
 if __name__ == "__main__":
-    db_file = "data/db/deepseek-chat.db"
+    db_file = "data/db/personality/population/standard.db"
     table_to_inspect = "personality"
     inspect_first_record(db_file, table_to_inspect)

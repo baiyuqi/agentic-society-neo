@@ -10,7 +10,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import markdown
 import json
 
-from asociety.personality.analysis_utils import calculate_single_profile_mahalanobis
+from asociety.personality.analysis_utils import (
+    calculate_single_profile_mahalanobis, PERSONALITY_TRAITS)
 from asociety.generator.qwen_analyzer import save_figure_to_bytes, analyze_image_with_text
 from studio.collapsible_help_panel import CollapsibleHelpPanel
 from studio.progress_dialog import ProgressManager
@@ -20,6 +21,12 @@ from studio.help_constants import helpcnstants
 HELP_CONTENT = helpcnstants['mahalanobis']
 
 class SingleMahalanobisPanel:
+    # --- Instrument surface -----------------------------------------------------------
+    # The defaults reproduce the personality panel exactly; the value panel overrides them.
+    traits = PERSONALITY_TRAITS
+    table = 'personality'
+    initialdir = 'data/db/personality'
+
     def __init__(self, parent):
         self.main = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
         
@@ -70,7 +77,7 @@ class SingleMahalanobisPanel:
     def browse_file(self):
         file_path = filedialog.askopenfilename(
             title='Select a single persona DB file',
-            initialdir='data/db/backup',
+            initialdir=self.initialdir,
             filetypes=[('SQLite DB', '*.db'), ('All Files', '*.*')]
         )
         if file_path:
@@ -94,7 +101,8 @@ class SingleMahalanobisPanel:
             progress_dialog.update_message("正在加载画像数据...")
             if progress_dialog.is_cancelled(): return None
             progress_dialog.update_message("正在计算马氏距离...")
-            distances, data_df = calculate_single_profile_mahalanobis(self.selected_file, return_df=True)
+            distances, data_df = calculate_single_profile_mahalanobis(
+                self.selected_file, return_df=True, columns=self.traits, table=self.table)
             if progress_dialog.is_cancelled(): return None
             progress_dialog.update_message("正在生成分布图表...")
             return distances, data_df

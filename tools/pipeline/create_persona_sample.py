@@ -169,8 +169,8 @@ def cleanup(engine, table_name):
 # --- Main Execution ---
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Creates a persona sample database by copying and converting records.")
-    parser.add_argument('src_db', help='Path to the source SQLite database (e.g., data/db/sampled_6000.db).')
-    parser.add_argument('dst_db', help='Path to the destination SQLite database to create (e.g., data/db/test.db).')
+    parser.add_argument('src_db', help='Path to the source SQLite database (e.g., data/db/personality/sampled_6000.db).')
+    parser.add_argument('dst_db', help='Path to the destination SQLite database to create (e.g., data/db/personality/test.db).')
     parser.add_argument('-n', type=int, required=True, help='Number of random samples to process.')
     parser.add_argument('--samples_table', default='samples', help="Name of the source and main samples table.")
     parser.add_argument('--persona_table', default='persona', help="Name of the final persona table.")

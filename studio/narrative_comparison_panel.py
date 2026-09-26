@@ -30,8 +30,8 @@ class NarrativeComparisonPanel(BaseCurvePanel):
     def get_data_sources(self):
         # Include all three deepseek variants for comprehensive comparison
         model_sources = [
-            {'name': 'deepseek-chat', 'path': 'data/db/backup/deepseek-chat.db', 'style': {'color': 'blue', 'lw': 2.0}},
-            {'name': 'deepseek-chat-antialign', 'path': 'data/db/backup/deepseek-chat-antialign.db', 'style': {'color': 'red', 'lw': 2.0}},
-            {'name': 'deepseek-chat-narrative', 'path': 'data/db/backup/deepseek-chat-narrative.db', 'style': {'color': 'green', 'lw': 2.5}}
+            {'name': 'standard', 'path': 'data/db/personality/population/standard.db', 'style': {'color': 'blue', 'lw': 2.0}},
+            {'name': 'antialign', 'path': 'data/db/personality/population/antialign.db', 'style': {'color': 'red', 'lw': 2.0}},
+            {'name': 'narrative', 'path': 'data/db/personality/population/narrative.db', 'style': {'color': 'green', 'lw': 2.5}}
         ]
         return model_sources

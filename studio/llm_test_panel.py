@@ -53,9 +53,9 @@ class LLMTestPanel(tk.Toplevel):
                 if not apikey: raise ValueError("OPENAI_APIKEY environment variable not set.")
                 self.llm = ChatOpenAI(model="glm4-chat-9b", openai_api_base="", api_key=apikey)
             elif self.model_name == 'deepseek':
-                apikey = os.getenv('DS_API_KEY')
-                api_base = os.getenv('DS_BASE_URL')
-                if not apikey or not api_base: raise ValueError("DS_API_KEY or DS_BASE_URL not set.")
+                apikey = os.getenv('DEEPSEEK_API_KEY')
+                api_base = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+                if not apikey: raise ValueError("DEEPSEEK_API_KEY not set.")
                 self.llm = ChatOpenAI(model="deepseek-chat", openai_api_base=api_base, api_key=apikey)
             elif self.model_name == 'qwen':
                 apikey = os.getenv('QW_API_KEY')

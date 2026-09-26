@@ -17,10 +17,10 @@ TARGET_TOTAL_RECORDS = 600 # Stop when the table has this many records in total
 def get_llm_engine(model_name: str):
     """Initializes and returns a specific LLM engine."""
     if model_name == 'deepseek':
-        apikey = os.getenv('DS_API_KEY')
-        api_base = os.getenv('DS_BASE_URL')
-        if not apikey or not api_base:
-            raise ValueError("DS_API_KEY or DS_BASE_URL environment variable not set.")
+        apikey = os.getenv('DEEPSEEK_API_KEY')
+        api_base = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+        if not apikey:
+            raise ValueError("DEEPSEEK_API_KEY environment variable not set.")
         return ChatOpenAI(model="deepseek-chat", openai_api_base=api_base, api_key=apikey)
     else:
         raise ValueError(f"Unsupported model for this tool: {model_name}")
