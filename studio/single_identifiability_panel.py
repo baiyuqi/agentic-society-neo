@@ -14,6 +14,7 @@ from asociety.personality.analysis_utils import (
     run_pca,
     PERSONALITY_TRAITS
 )
+from studio import theme
 from studio.progress_dialog import ProgressManager
 
 
@@ -35,7 +36,7 @@ class SingleIdentifiabilityPanel:
         control_frame = ttk.Frame(self.main)
         control_frame.pack(fill=tk.X, padx=10, pady=10)
 
-        title_label = ttk.Label(control_frame, text=self.title, font=("Helvetica", 14, "bold"))
+        title_label = ttk.Label(control_frame, text=self.title, font=theme.FONT_H3)
         title_label.pack(side=tk.LEFT, padx=(0, 20))
 
         self.run_button = ttk.Button(control_frame, text="运行分析", command=self.start_analysis)
@@ -68,10 +69,10 @@ class SingleIdentifiabilityPanel:
         ari_frame = ttk.Frame(self.plot_frame)
         ari_frame.pack(fill=tk.X, pady=(0, 10))
 
-        self.ari_label_samples = ttk.Label(ari_frame, text="标准样本聚类 ARI: -", font=("Helvetica", 10, "bold"))
+        self.ari_label_samples = ttk.Label(ari_frame, text="标准样本聚类 ARI: -")
         self.ari_label_samples.pack(side=tk.LEFT, padx=(0, 20))
 
-        self.ari_label_poor = ttk.Label(ari_frame, text="贫乏样本聚类 ARI: -", font=("Helvetica", 10, "bold"))
+        self.ari_label_poor = ttk.Label(ari_frame, text="贫乏样本聚类 ARI: -")
         self.ari_label_poor.pack(side=tk.LEFT)
 
         self.fig, (self.ax_samples, self.ax_poor) = plt.subplots(1, 2, figsize=(14, 6))

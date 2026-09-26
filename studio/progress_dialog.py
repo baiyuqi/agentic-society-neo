@@ -38,7 +38,7 @@ class ProgressDialog:
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
         # 消息标签
-        self.message_label = ttk.Label(main_frame, text=self.message, font=("Helvetica", 11))
+        self.message_label = ttk.Label(main_frame, text=self.message)
         self.message_label.pack(pady=(0, 15))
         
         # 进度条

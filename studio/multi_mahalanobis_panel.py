@@ -9,6 +9,7 @@ from matplotlib.patches import Patch
 
 from asociety.personality.analysis_utils import (
     calculate_single_profile_mahalanobis, load_personality_data, PERSONALITY_TRAITS)
+from studio import theme
 from studio.progress_dialog import ProgressManager
 
 class MultiMahalanobisPanel:
@@ -28,7 +29,7 @@ class MultiMahalanobisPanel:
         control_frame = ttk.Frame(main_content_frame)
         control_frame.pack(fill=tk.X, padx=10, pady=10)
         
-        title_label = ttk.Label(control_frame, text="多数据源马氏距离对比分析", font=("Helvetica", 14, "bold"))
+        title_label = ttk.Label(control_frame, text="多数据源马氏距离对比分析", font=theme.FONT_H3)
         title_label.pack(pady=10)
         
         # Create horizontal frame for buttons

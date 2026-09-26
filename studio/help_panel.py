@@ -1,6 +1,7 @@
 # studio/help_panel.py
 import tkinter as tk
 from tkinter import ttk
+from studio import theme
 import markdown
 from tkhtmlview import HTMLScrolledText
 import re
@@ -15,14 +16,14 @@ class MarkdownRenderer:
         text_widget.delete(1.0, tk.END)
 
         # 配置文本样式
-        text_widget.tag_configure("h1", font=("Helvetica", 16, "bold"), spacing1=10, spacing3=5)
-        text_widget.tag_configure("h2", font=("Helvetica", 14, "bold"), spacing1=8, spacing3=4)
-        text_widget.tag_configure("h3", font=("Helvetica", 12, "bold"), spacing1=6, spacing3=3)
-        text_widget.tag_configure("bold", font=("Helvetica", 11, "bold"))
-        text_widget.tag_configure("italic", font=("Helvetica", 11, "italic"))
+        text_widget.tag_configure("h1", font=("Segoe UI", 16, "bold"), spacing1=10, spacing3=5)
+        text_widget.tag_configure("h2", font=("Segoe UI", 14, "bold"), spacing1=8, spacing3=4)
+        text_widget.tag_configure("h3", font=("Segoe UI", 12, "bold"), spacing1=6, spacing3=3)
+        text_widget.tag_configure("bold", font=("Segoe UI", 11, "bold"))
+        text_widget.tag_configure("italic", font=("Segoe UI", 11, "italic"))
         text_widget.tag_configure("code", font=("Courier", 10), background="#f0f0f0")
         text_widget.tag_configure("bullet", lmargin1=20, lmargin2=40)
-        text_widget.tag_configure("normal", font=("Helvetica", 11))
+        text_widget.tag_configure("normal", font=("Segoe UI", 11))
 
         lines = markdown_content.split('\n')
         for line in lines:
@@ -85,7 +86,7 @@ class HelpPanel(ttk.Frame):
         self.pack_propagate(False)
 
         # --- Title ---
-        title_label = ttk.Label(self, text=title, font=("Helvetica", 13, "bold"))
+        title_label = ttk.Label(self, text=title, font=theme.FONT_H3)
         title_label.pack(pady=(5, 10), padx=10, anchor='n')
 
         # --- Separator ---

@@ -5,6 +5,7 @@ from tkinter import scrolledtext
 from asociety.value.value_analysis import calculate_value_stats, project_values_1d
 from asociety.value import pvq
 import os
+from studio import theme
 
 VALUE_TRAIT_COLUMNS = list(pvq.VALUE_TO_COLUMN.values()) + list(pvq.HIGHER_TO_COLUMN.values())
 
@@ -42,39 +43,28 @@ class ValueStats:
     def __init__(self, parent) -> None:
         self.selected_file = None
         # self.lang = 'zh'  # 由主窗口控制
-        self.main = ttk.Frame(parent, style='Main.TFrame')
-        self.main.pack(fill=BOTH, expand=True)
+        self.main = ttk.Frame(parent)
+        self.main.pack(fill=BOTH, expand=True, padx=theme.PAGE_PADDING, pady=theme.PAGE_PADDING)
 
-        # 创建标题
-        self.title_label = ttk.Label(self.main, font=("Helvetica", 20, "bold"), anchor=CENTER, background="#e3eefa", foreground="#2a3a4a")
-        self.title_label.pack(pady=(20, 10), fill=X)
+        # 页头（左对齐 + 强调条）
+        _, self.title_label = theme.page_header(self.main, '')
 
-        # 分割线
-        sep = ttk.Separator(self.main, orient=HORIZONTAL)
-        sep.pack(fill=X, padx=30, pady=(0, 10))
-
-        # 创建按钮框架
-        button_frame = ttk.Frame(self.main, style='Main.TFrame')
-        button_frame.pack(pady=10)
-
-        # 创建刷新按钮
-        self.refresh_button = ttk.Button(button_frame, text="刷新统计数据", command=self.refresh_stats, style='Accent.TButton')
-        self.refresh_button.pack(side=LEFT, padx=10)
-        # 一维投影按钮
-        self.proj1d_button = ttk.Button(button_frame, text="一维投影", command=self.show_1d_projection, style='Accent.TButton')
-        self.proj1d_button.pack(side=LEFT, padx=10)
-
-        # --- Database Selection ---
-        self.file_label = ttk.Label(button_frame, text="Selected File: None")
-        self.file_label.pack(side=LEFT, padx=10)
-        browse_button = ttk.Button(button_frame, text="Browse File...", command=self.browse_file)
-        browse_button.pack(side=LEFT, padx=10)
+        # 工具栏
+        toolbar = ttk.Frame(self.main)
+        toolbar.pack(fill=X, pady=(0, theme.L))
+        self.refresh_button = ttk.Button(toolbar, text="刷新统计数据", command=self.refresh_stats)
+        self.refresh_button.pack(side=LEFT, padx=(0, theme.S))
+        self.proj1d_button = ttk.Button(toolbar, text="一维投影", command=self.show_1d_projection)
+        self.proj1d_button.pack(side=LEFT, padx=(0, theme.S))
+        self.file_label = ttk.Label(toolbar, text="Selected File: None")
+        self.file_label.pack(side=LEFT, padx=theme.L)
+        browse_button = ttk.Button(toolbar, text="Browse File...", command=self.browse_file)
+        browse_button.pack(side=LEFT)
 
         # 创建统计信息显示区域
         self.create_stats_display()
 
         # Initialize empty
-        self.set_style()
         self.update_texts('zh') # Initialize texts
         self.clear_stats()      # Clear table and summary
         self.selected_file = None
@@ -87,7 +77,7 @@ class ValueStats:
         )
         if file_path:
             self.selected_file = file_path
-            self.file_label.config(text=f"Selected File: ...{os.path.basename(file_path)}")
+            self.file_label.configure(text=f"Selected File: ...{os.path.basename(file_path)}")
             self.refresh_stats()
 
     def refresh_data(self):
@@ -98,36 +88,23 @@ class ValueStats:
         """Clears the table and summary text."""
         for item in self.tree.get_children():
             self.tree.delete(item)
-        self.summary_text.delete(1.0, END)
+        theme.set_text(self.summary_text, '')
 
-    def set_style(self):
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure('Main.TFrame', background='#f7fafd')
-        style.configure('Accent.TButton', font=('Helvetica', 13, 'bold'), foreground='#fff', background='#4a90e2', borderwidth=0, focusthickness=3, focuscolor='none', padding=8)
-        style.map('Accent.TButton', background=[('active', '#357ab8')])
-        style.configure('Treeview', font=('Helvetica', 12), rowheight=32, fieldbackground='#f7fafd', background='#f7fafd', borderwidth=1)
-        style.configure('Treeview.Heading', font=('Helvetica', 13, 'bold'), background='#e3eefa', foreground='#2a3a4a')
-        style.layout('Treeview', [('Treeview.treearea', {'sticky': 'nswe'})])
-        style.configure('Summary.TLabelframe', background='#e3eefa', borderwidth=2, relief='solid')
-        style.configure('Summary.TLabelframe.Label', font=('Helvetica', 13, 'bold'), background='#e3eefa', foreground='#2a3a4a')
 
     def create_stats_display(self):
-        # 创建主显示框架
-        display_frame = ttk.Frame(self.main, style='Main.TFrame')
-        display_frame.pack(fill=BOTH, expand=True, padx=30, pady=10)
-
-        self.tree = ttk.Treeview(display_frame, show='headings', height=8, style='Treeview')
-        self.tree.pack(side=LEFT, fill=BOTH, expand=True)
-        self.scrollbar = ttk.Scrollbar(display_frame, orient=VERTICAL, command=self.tree.yview)
+        # 表格卡片
+        table_card = theme.card(self.main, fill=BOTH, expand=True)
+        self.tree = ttk.Treeview(table_card, show='headings', height=8)
+        self.tree.pack(side=LEFT, fill=BOTH, expand=True, padx=(theme.M, 0), pady=theme.M)
+        self.scrollbar = ttk.Scrollbar(table_card, orient=VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
-        self.scrollbar.pack(side=RIGHT, fill=Y)
+        self.scrollbar.pack(side=RIGHT, fill=Y, padx=(0, theme.M), pady=theme.M)
 
-        # 创建摘要信息框架
-        self.summary_frame = ttk.LabelFrame(self.main, style='Summary.TLabelframe', padding=10)
-        self.summary_frame.pack(fill=X, padx=30, pady=15)
-        self.summary_text = scrolledtext.ScrolledText(self.summary_frame, height=7, width=60, font=("Consolas", 12), background="#f7fafd", foreground="#2a3a4a", borderwidth=0, relief=FLAT)
-        self.summary_text.pack(fill=BOTH, expand=True)
+        # 摘要卡片
+        summary_card = theme.card(self.main, fill=X, pady=(theme.L, 0))
+        self.summary_title = ttk.Label(summary_card, text='')
+        self.summary_title.pack(anchor='w', padx=theme.M, pady=(theme.M, 0))
+        self.summary_text = theme.card_text(summary_card)
 
     def set_language(self, lang):
         self.update_texts(lang)
@@ -135,9 +112,9 @@ class ValueStats:
     def update_texts(self, lang):
         # 用主窗口传递的lang刷新界面文本
         lang_dict = LANGUAGES[lang]
-        self.title_label.config(text=lang_dict['title'])
-        self.refresh_button.config(text=lang_dict['refresh'])
-        self.summary_frame.config(text=lang_dict['summary'])
+        self.title_label.configure(text=lang_dict['title'])
+        self.refresh_button.configure(text=lang_dict['refresh'])
+        self.summary_title.configure(text=lang_dict['summary'])
         self.tree.config(columns=lang_dict['columns'])
         for i, col in enumerate(lang_dict['columns']):
             self.tree.heading(f'#{i+1}', text=col)
@@ -165,25 +142,20 @@ class ValueStats:
             for idx, (trait, name) in enumerate(zip(VALUE_TRAIT_COLUMNS, trait_names)):
                 if trait in stats:
                     values = stats[trait]
-                    tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
                     self.tree.insert('', 'end', values=(
                         name,
                         f"{values['mean']:.4f}",
                         f"{values['variance']:.4f}",
                         f"{values['std']:.4f}",
                         sample_count
-                    ), tags=(tag,))
-            self.tree.tag_configure('evenrow', background='#e3eefa')
-            self.tree.tag_configure('oddrow', background='#f7fafd')
+                    ))
             # 更新摘要信息
             self.update_summary(stats, lang)
         except Exception as e:
-            self.summary_text.delete(1.0, END)
-            self.summary_text.insert(END, f"{lang_dict['error']}\n{str(e)}")
+            theme.set_text(self.summary_text, f"{lang_dict['error']}\n{str(e)}")
 
     def update_summary(self, stats, lang):
         lang_dict = LANGUAGES[lang]
-        self.summary_text.delete(1.0, END)
         summary = f"{lang_dict['summary_head']}\n\n"
         trait_names = lang_dict['trait_names']
         for trait, name in zip(VALUE_TRAIT_COLUMNS, trait_names):
@@ -203,7 +175,7 @@ class ValueStats:
             min_trait = trait_names[means.index(min_mean)]
             summary += f"{lang_dict['max_mean']}: {max_trait} ({max_mean:.4f})\n"
             summary += f"{lang_dict['min_mean']}: {min_trait} ({min_mean:.4f})\n"
-        self.summary_text.insert(END, summary)
+        theme.set_text(self.summary_text, summary)
 
     def show_1d_projection(self):
         import matplotlib

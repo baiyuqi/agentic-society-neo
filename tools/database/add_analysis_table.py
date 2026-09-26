@@ -45,7 +45,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "db_path",
         type=str,
-        help="The full path to the SQLite database file (e.g., 'data/db/personality/deepseek-chat.db')."
+        help="The full path to the SQLite database file (e.g., 'data/db/personality/population/standard.db')."
     )
 
     args = parser.parse_args()

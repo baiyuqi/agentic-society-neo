@@ -14,6 +14,7 @@ from asociety.personality.analysis_utils import (
     run_pca,
     PERSONALITY_TRAITS
 )
+from studio import theme
 from studio.progress_dialog import ProgressManager
 
 class IdentifiabilityPanel:
@@ -40,7 +41,7 @@ class IdentifiabilityPanel:
         control_frame = ttk.Frame(self.main)
         control_frame.pack(fill=tk.X, padx=10, pady=10)
         
-        title_label = ttk.Label(control_frame, text=self.title, font=("Helvetica", 14, "bold"))
+        title_label = ttk.Label(control_frame, text=self.title, font=theme.FONT_H3)
         title_label.pack(side=tk.LEFT, padx=(0, 20))
 
         self.run_button = ttk.Button(control_frame, text="运行分析", command=self.start_analysis)
@@ -52,7 +53,7 @@ class IdentifiabilityPanel:
 
         # --- Left Panel (Standard Samples) ---
         self.frame_samples = ttk.Frame(paned_window)
-        self.ari_label_samples = ttk.Label(self.frame_samples, text="ARI: -", font=("Helvetica", 12, "bold"))
+        self.ari_label_samples = ttk.Label(self.frame_samples, text="ARI: -")
         self.ari_label_samples.pack(pady=5, padx=10, anchor='w')
         self.fig_samples, self.ax_samples = plt.subplots(figsize=(6, 5))
         self.canvas_samples = FigureCanvasTkAgg(self.fig_samples, master=self.frame_samples)
@@ -61,7 +62,7 @@ class IdentifiabilityPanel:
 
         # --- Right Panel (Poor Samples) ---
         self.frame_poor = ttk.Frame(paned_window)
-        self.ari_label_poor = ttk.Label(self.frame_poor, text="ARI: -", font=("Helvetica", 12, "bold"))
+        self.ari_label_poor = ttk.Label(self.frame_poor, text="ARI: -")
         self.ari_label_poor.pack(pady=5, padx=10, anchor='w')
         self.fig_poor, self.ax_poor = plt.subplots(figsize=(6, 5))
         self.canvas_poor = FigureCanvasTkAgg(self.fig_poor, master=self.frame_poor)

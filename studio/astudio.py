@@ -3,11 +3,12 @@ matplotlib.use('TkAgg')
 
 import tkinter as tk
 from tkinter import *
-from tkinter import ttk
 from tkinter import filedialog
 import os
-from tkinter import font
 
+import ttkbootstrap as ttk
+
+from studio import theme
 from asociety.repository.database import set_currentdb
 from studio.single_mahalanobis_panel import SingleMahalanobisPanel
 from studio.clustering_panel import ClusteringPanel
@@ -123,6 +124,8 @@ LANGUAGES = {
         'tree_root': 'Agentic Society',
         'language': '语言',
         'menu_language': '语言/Language',
+        'theme': '主题',
+        'landing_hint': '在左侧选择一个分析功能',
         'working_db': '工作数据库',
         'data_analysis': '数据分析',
         'mahalanobis_distance': '马氏距离分析 (单文件)',
@@ -206,6 +209,8 @@ LANGUAGES = {
         'tree_root': 'Agentic Society',
         'language': 'Language',
         'menu_language': '语言/Language',
+        'theme': 'Theme',
+        'landing_hint': 'Select a function on the left',
         'working_db': 'Working Database',
         'data_analysis': 'Data Analysis',
         'mahalanobis_distance': 'Mahalanobis Dist (Single File)',
@@ -296,116 +301,184 @@ SECTION_LABEL_KEYS = {
     'curve_comparison_section': 'curve_comparison_section', 'special_analysis': 'special_analysis',
 }
 
+# Bootstrap Icons glyph per nav item (rendered via ttk.Icon, monochrome, theme-aware).
+FUNCTION_ICONS = {
+    'browse': 'table', 'stats': 'bar-chart',
+    'analysis': 'clipboard-data', 'age_personality_curve': 'graph-up',
+    'mahalanobis': 'sliders', 'clustering': 'grid-3x3-gap',
+    'file_clustering': 'folder2-open', 'tsne': 'dice-5',
+    'comparison': 'columns', 'ocean_density': 'activity',
+    'consistency': 'link-45deg', 'factor': 'diagram-2',
+    'curve': 'bezier', 'raw': 'graph-up-arrow',
+    'antialign': 'arrow-left-right', 'narrative': 'book',
+    'stability': 'shield-check', 'single_density': 'circle',
+    'identifiability': 'fingerprint', 'group_identifiability': 'people',
+    'single_identifiability': 'person', 'multi_mahalanobis': 'arrows-angle-expand',
+}
+
 class MainWindow:
     def __init__(self, root) -> None:
         self.lang = 'zh'
         self.instrument = 'personality'
+        self.current_theme = theme.DEFAULT_THEME
         self.root = root
-        root.title('AgenticSociety')
-        # root.iconbitmap()   
-        
-        lang_frame = ttk.Frame(root)
-        lang_frame.pack(anchor=NE, padx=10, pady=2)
-        ttk.Label(lang_frame, text="语言/Language:", font=("Helvetica", 11)).pack(side=LEFT)
-        self.lang_var = StringVar(value=self.lang)
-        lang_combo = ttk.Combobox(lang_frame, textvariable=self.lang_var, values=['zh', 'en'], width=6, state='readonly')
-        lang_combo.pack(side=LEFT, padx=5)
-        lang_combo.bind('<<ComboboxSelected>>', self.on_lang_change)
+        root.title('Agentic Society')
 
-        self.menu(root)
-        self.main = ttk.Frame(root, style='TFrame')
+        # Bootstrap theme (ttkbootstrap) — drives all chrome and data tables.
+        theme.set_theme(self.current_theme)
+
+        # --- Body: sidebar + content ---
+        self.main = ttk.Frame(root)
         self.main.pack(fill=BOTH, expand=True)
 
-        self.PW = PW = ttk.PanedWindow(self.main, orient=HORIZONTAL)
-        PW.pack(fill=BOTH, expand=True)
+        self.menu(root)
 
-        self.left = ttk.Frame(PW, width=250, height=300, relief=SUNKEN, style='TFrame')
-        self.right = ttk.Frame(PW, width=800, height=300, relief=SUNKEN, style='TFrame')
+        # Fixed-width sidebar. Background follows the theme (no grey wash); the
+        # vertical separator is what divides it from the content.
+        self.sidebar = ttk.Frame(self.main, width=theme.SIDEBAR_WIDTH)
+        self.sidebar.pack(side=LEFT, fill=Y)
+        self.sidebar.pack_propagate(False)
 
-        PW.add(self.left, weight=1)
-        PW.add(self.right, weight=4)
+        # Logo pinned to the top of the sidebar.
+        self.logo_label = ttk.Label(self.sidebar, text='Agentic Society',
+                                    font=theme.FONT_LOGO)
+        self.logo_label.pack(anchor=W, padx=24, pady=(26, 20))
 
-        # Instrument selector: switching this swaps the whole function tree to the selected instrument.
-        selector_frame = ttk.Frame(self.left)
-        selector_frame.pack(fill=X, padx=6, pady=(6, 2))
-        self.instrument_label = ttk.Label(selector_frame, text=LANGUAGES[self.lang].get('instrument', 'Instrument'), font=("Helvetica", 11))
-        self.instrument_label.pack(anchor=W)
+        # Instrument selector.
+        self.instrument_label = ttk.Label(self.sidebar,
+                                          text=LANGUAGES[self.lang].get('instrument', 'Instrument'),
+                                          style='Caption.TLabel', bootstyle='secondary')
+        self.instrument_label.pack(anchor=W, padx=24)
         self.instrument_var = StringVar(value=self.instrument)
-        instrument_combo = ttk.Combobox(selector_frame, textvariable=self.instrument_var,
+        instrument_combo = ttk.Combobox(self.sidebar, textvariable=self.instrument_var,
                                         values=['personality', 'value', 'morality'], state='readonly')
-        instrument_combo.pack(fill=X, pady=(2, 0))
+        instrument_combo.pack(fill=X, padx=24, pady=(6, 16))
         instrument_combo.bind('<<ComboboxSelected>>', self.on_instrument_change)
 
-        self.treeView = self.tree(self.left)
+        # Function tree fills the middle of the sidebar.
+        self.treeView = self.tree(self.sidebar)
+
+        # Language + theme controls pinned to the bottom of the sidebar.
+        bottom = ttk.Frame(self.sidebar)
+        bottom.pack(side=BOTTOM, fill=X, padx=24, pady=(8, 18))
+
+        self.lang_label = ttk.Label(bottom, text=LANGUAGES[self.lang]['language'],
+                                    style='Caption.TLabel', bootstyle='secondary')
+        self.lang_label.pack(anchor=W)
+        self.lang_var = StringVar(value=self.lang)
+        lang_combo = ttk.Combobox(bottom, textvariable=self.lang_var, values=['zh', 'en'], state='readonly')
+        lang_combo.pack(fill=X, pady=(4, 12))
+        lang_combo.bind('<<ComboboxSelected>>', self.on_lang_change)
+
+        self.theme_label = ttk.Label(bottom, text=LANGUAGES[self.lang]['theme'],
+                                     style='Caption.TLabel', bootstyle='secondary')
+        self.theme_label.pack(anchor=W)
+        self.theme_var = StringVar(value=self.current_theme)
+        theme_combo = ttk.Combobox(bottom, textvariable=self.theme_var, values=theme.available_themes(), state='readonly')
+        theme_combo.pack(fill=X, pady=(4, 0))
+        theme_combo.bind('<<ComboboxSelected>>', self.on_theme_change)
+
+        # Vertical divider between sidebar and content; drag it to resize the
+        # sidebar. The wide invisible frame gives a comfortable grab target, the
+        # 2px Separator inside it is the visual line.
+        self.divider = ttk.Frame(self.main, width=8, cursor='sb_h_double_arrow')
+        self.divider.pack(side=LEFT, fill=Y)
+        self.divider.pack_propagate(False)
+        ttk.Separator(self.divider, orient='vertical').pack(side=LEFT, fill=Y)
+        self.divider.bind('<Button-1>', self._start_sidebar_resize)
+        self.divider.bind('<B1-Motion>', self._resize_sidebar)
+        self.divider.bind('<ButtonRelease-1>', self._end_sidebar_resize)
+
+        # Content area.
+        self.right = ttk.Frame(self.main)
+        self.right.pack(side=LEFT, fill=BOTH, expand=True)
+
+        # Landing state for the empty content area
+        self.landing = ttk.Frame(self.right)
+        self.landing.pack(fill=BOTH, expand=True)
+        center = ttk.Frame(self.landing)
+        center.pack(expand=True)
+        self.landing_title = ttk.Label(center, text=LANGUAGES[self.lang]['tree_root'],
+                                       font=('Segoe UI', 28, 'bold'))
+        self.landing_title.pack(pady=(0, 8))
+        self.landing_hint = ttk.Label(center, text=LANGUAGES[self.lang]['landing_hint'],
+                                      bootstyle='secondary')
+        self.landing_hint.pack()
         
         # Initialize all panels
-        self.panels = {
-            'personality': PersonalityBrowser(self.right),
-            'personality-analysis': PersonalityAnalysis(self.right),
-            'personality-stats': PersonalityStats(self.right),
-            'mahalanobis': SingleMahalanobisPanel(self.right),
-            'multi_mahalanobis': MultiMahalanobisPanel(self.right),
-            'clustering': ClusteringPanel(self.right),
-            'file-clustering': FileClusteringPanel(self.right),
-            'tsne': TSNEPanel(self.right),
-            'comparison': ComparisonPanel(self.right),
-            'ocean-density': OceanDensityPanel(self.right),
-            'consistency': InternalConsistencyPanel(self.right),
-            'factor': FactorAnalysisPanel(self.right),
-            'identifiability': IdentifiabilityPanel(self.right),
-            'group-identifiability': GroupIdentifiabilityPanel(self.right),
-            'single-identifiability': SingleIdentifiabilityPanel(self.right),
-            'age-personality-curve': AgePersonalityCurve(self.right),
-            'curve_comparison': CurveComparisonPanel(self.right),
-            'raw_comparison': RawComparisonPanel(self.right),
-            'antialign_comparison': AntialignComparisonPanel(self.right),
-            'narrative_comparison': NarrativeComparisonPanel(self.right),
-            'stability': StabilityAnalysisPanel(self.right),
-            'single-density': SingleDensityPanel(self.right),
-            'value': ValueBrowser(self.right),
-            'value-stats': ValueStats(self.right),
-            'value-analysis': ValueAnalysisPanel(self.right),
-            'value-curve-comparison': ValueCurveComparisonPanel(self.right),
-            'value-raw-comparison': ValueRawComparisonPanel(self.right),
-            'value-antialign-comparison': ValueAntialignComparisonPanel(self.right),
-            'value-narrative-comparison': ValueNarrativeComparisonPanel(self.right),
-            'value-stability': ValueStabilityPanel(self.right),
-            'value-identifiability': ValueIdentifiabilityPanel(self.right),
-            'value-group-identifiability': ValueGroupIdentifiabilityPanel(self.right),
-            'value-single-identifiability': ValueSingleIdentifiabilityPanel(self.right),
-            'value-single-density': ValueSingleDensityPanel(self.right),
-            'value-age-curve': ValueAgeCurve(self.right),
-            'value-mahalanobis': ValueSingleMahalanobisPanel(self.right),
-            'value-multi-mahalanobis': ValueMultiMahalanobisPanel(self.right),
-            'value-comparison': ValueComparisonPanel(self.right),
-            'value-clustering': ValueClusteringPanel(self.right),
-            'value-file-clustering': ValueFileClusteringPanel(self.right),
-            'value-tsne': ValueTSNEPanel(self.right),
-            'morality': MoralityBrowser(self.right),
-            'morality-stats': MoralityStats(self.right),
-            'morality-analysis': MoralityAnalysisPanel(self.right),
-            'morality-curve-comparison': MoralityCurveComparisonPanel(self.right),
-            'morality-raw-comparison': MoralityRawComparisonPanel(self.right),
-            'morality-antialign-comparison': MoralityAntialignComparisonPanel(self.right),
-            'morality-narrative-comparison': MoralityNarrativeComparisonPanel(self.right),
-            'morality-stability': MoralityStabilityPanel(self.right),
-            'morality-identifiability': MoralityIdentifiabilityPanel(self.right),
-            'morality-group-identifiability': MoralityGroupIdentifiabilityPanel(self.right),
-            'morality-single-identifiability': MoralitySingleIdentifiabilityPanel(self.right),
-            'morality-single-density': MoralitySingleDensityPanel(self.right),
-            'morality-age-curve': MoralityAgeCurve(self.right),
-            'morality-mahalanobis': MoralitySingleMahalanobisPanel(self.right),
-            'morality-multi-mahalanobis': MoralityMultiMahalanobisPanel(self.right),
-            'morality-comparison': MoralityComparisonPanel(self.right),
-            'morality-clustering': MoralityClusteringPanel(self.right),
-            'morality-file-clustering': MoralityFileClusteringPanel(self.right),
-            'morality-tsne': MoralityTSNEPanel(self.right)
+        # Panel registry: key -> class. Instances are built lazily on first show so the
+        # app doesn't construct ~60 panels (and their matplotlib figures) at startup.
+        self._panel_classes = {
+            'personality': PersonalityBrowser,
+            'personality-analysis': PersonalityAnalysis,
+            'personality-stats': PersonalityStats,
+            'mahalanobis': SingleMahalanobisPanel,
+            'multi_mahalanobis': MultiMahalanobisPanel,
+            'clustering': ClusteringPanel,
+            'file-clustering': FileClusteringPanel,
+            'tsne': TSNEPanel,
+            'comparison': ComparisonPanel,
+            'ocean-density': OceanDensityPanel,
+            'consistency': InternalConsistencyPanel,
+            'factor': FactorAnalysisPanel,
+            'identifiability': IdentifiabilityPanel,
+            'group-identifiability': GroupIdentifiabilityPanel,
+            'single-identifiability': SingleIdentifiabilityPanel,
+            'age-personality-curve': AgePersonalityCurve,
+            'curve_comparison': CurveComparisonPanel,
+            'raw_comparison': RawComparisonPanel,
+            'antialign_comparison': AntialignComparisonPanel,
+            'narrative_comparison': NarrativeComparisonPanel,
+            'stability': StabilityAnalysisPanel,
+            'single-density': SingleDensityPanel,
+            'value': ValueBrowser,
+            'value-stats': ValueStats,
+            'value-analysis': ValueAnalysisPanel,
+            'value-curve-comparison': ValueCurveComparisonPanel,
+            'value-raw-comparison': ValueRawComparisonPanel,
+            'value-antialign-comparison': ValueAntialignComparisonPanel,
+            'value-narrative-comparison': ValueNarrativeComparisonPanel,
+            'value-stability': ValueStabilityPanel,
+            'value-identifiability': ValueIdentifiabilityPanel,
+            'value-group-identifiability': ValueGroupIdentifiabilityPanel,
+            'value-single-identifiability': ValueSingleIdentifiabilityPanel,
+            'value-single-density': ValueSingleDensityPanel,
+            'value-age-curve': ValueAgeCurve,
+            'value-mahalanobis': ValueSingleMahalanobisPanel,
+            'value-multi-mahalanobis': ValueMultiMahalanobisPanel,
+            'value-comparison': ValueComparisonPanel,
+            'value-clustering': ValueClusteringPanel,
+            'value-file-clustering': ValueFileClusteringPanel,
+            'value-tsne': ValueTSNEPanel,
+            'morality': MoralityBrowser,
+            'morality-stats': MoralityStats,
+            'morality-analysis': MoralityAnalysisPanel,
+            'morality-curve-comparison': MoralityCurveComparisonPanel,
+            'morality-raw-comparison': MoralityRawComparisonPanel,
+            'morality-antialign-comparison': MoralityAntialignComparisonPanel,
+            'morality-narrative-comparison': MoralityNarrativeComparisonPanel,
+            'morality-stability': MoralityStabilityPanel,
+            'morality-identifiability': MoralityIdentifiabilityPanel,
+            'morality-group-identifiability': MoralityGroupIdentifiabilityPanel,
+            'morality-single-identifiability': MoralitySingleIdentifiabilityPanel,
+            'morality-single-density': MoralitySingleDensityPanel,
+            'morality-age-curve': MoralityAgeCurve,
+            'morality-mahalanobis': MoralitySingleMahalanobisPanel,
+            'morality-multi-mahalanobis': MoralityMultiMahalanobisPanel,
+            'morality-comparison': MoralityComparisonPanel,
+            'morality-clustering': MoralityClusteringPanel,
+            'morality-file-clustering': MoralityFileClusteringPanel,
+            'morality-tsne': MoralityTSNEPanel,
         }
+        # Constructed panels, keyed identically to _panel_classes.
+        self.panels = {}
         
         self.set_language(self.lang)
-        # Hide all panels initially
-        for panel in self.panels.values():
-            panel.main.pack_forget()
+
+    def _configure_tree_tags(self, tv):
+        fg, muted = theme.tree_colors()
+        tv.tag_configure('section', font=theme.FONT_NAV_SECTION, foreground=muted)
+        tv.tag_configure('item', font=theme.FONT_NAV_ITEM, foreground=fg)
 
     def donothing(self):
         pass
@@ -451,16 +524,24 @@ class MainWindow:
                         messagebox.showerror('面板刷新错误', f'切换数据库后刷新面板时出错：\n{e}')
 
     def tree(self, frame):
-        tv = ttk.Treeview(frame, style="Treeview")
-        tv.pack(fill=BOTH, expand=True)
+        # Tree + scrollbar live in their own frame packed to the top (the same
+        # slot the bare tree used to occupy), so the bottom controls below keep
+        # their vertical space instead of being squeezed out by a side-packed tree.
+        wrap = ttk.Frame(frame)
+        wrap.pack(fill=tk.BOTH, expand=True)
+        tv = ttk.Treeview(wrap, show='tree', style='Nav.Treeview')
+        sb = ttk.Scrollbar(wrap, orient='vertical', command=tv.yview, bootstyle='round')
+        tv.configure(yscrollcommand=sb.set)
+        sb.pack(side=tk.RIGHT, fill=tk.Y)
+        tv.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(16, 0))
+        self._configure_tree_tags(tv)
         self.recreate(tv)
-        tv.config(height=100)
         tv.bind("<<TreeviewSelect>>", self.treeSelect)
         return tv
 
     def updateTree(self):
         self.recreate(self.treeView)
-        self.left.update()
+        self.sidebar.update()
 
     def recreate(self, tv):
         for i in tv.get_children():
@@ -468,14 +549,23 @@ class MainWindow:
 
         lang = LANGUAGES[self.lang]
 
-        # One function tree for the selected instrument. Section nodes use the section id as the
-        # tree item id; function nodes use the function id (resolved to a panel via FUNCTIONS).
-        for section_id, func_ids in SECTIONS:
-            tv.insert('', 'end', section_id, text=lang[SECTION_LABEL_KEYS[section_id]], image='')
+        for idx, (section_id, func_ids) in enumerate(SECTIONS):
+            # A blank spacer row before every section after the first keeps the
+            # four groups from running together into one wall of text.
+            if idx > 0:
+                tv.insert('', 'end', f'__spacer_{idx}', text='', tags=('section',))
+            tv.insert('', 'end', section_id, text=lang[SECTION_LABEL_KEYS[section_id]].upper(),
+                      tags=('section',))
             for func_id in func_ids:
                 if FUNCTIONS[func_id][self.instrument] is None:
                     continue
-                tv.insert(section_id, 'end', func_id, text=lang[FUNCTION_LABEL_KEYS[func_id]], image='')
+                icon = FUNCTION_ICONS.get(func_id)
+                image = ttk.Icon(icon, size=16, color='secondary') if icon else ''
+                # The tree column puts the glyph flush against the label; lead the
+                # text with spaces to give the icon breathing room.
+                tv.insert(section_id, 'end', func_id,
+                          text='  ' + lang[FUNCTION_LABEL_KEYS[func_id]],
+                          image=image, tags=('item',))
             tv.item(section_id, open=True)
 
     def on_instrument_change(self, event=None):
@@ -487,6 +577,31 @@ class MainWindow:
         # Hide every panel so no stale instrument's panel stays visible.
         for p in self.panels.values():
             p.main.pack_forget()
+        self.landing.pack(fill=BOTH, expand=True)
+
+    def _ensure_panel(self, key):
+        panel = self.panels.get(key)
+        if panel is None:
+            cls = self._panel_classes.get(key)
+            if cls is None:
+                return None
+            panel = cls(self.right)
+            # Panel __init__ packs its `main` frame; hide it until it is selected.
+            panel.main.pack_forget()
+            self.panels[key] = panel
+            self._apply_language(panel)
+        return panel
+
+    def _apply_language(self, panel):
+        import inspect
+        if hasattr(panel, 'set_language'):
+            sig = inspect.signature(panel.set_language)
+            if len(sig.parameters) == 3:  # expects self, lang, lang_dict
+                panel.set_language(self.lang, LANGUAGES[self.lang])
+            else:  # expects self, lang
+                panel.set_language(self.lang)
+        if hasattr(panel, 'update_texts'):  # for the stats panels
+            panel.update_texts(self.lang)
 
     def treeSelect(self, event):
         if not self.treeView.selection():
@@ -494,29 +609,30 @@ class MainWindow:
 
         selected_item = self.treeView.selection()[0]
 
+        # Blank spacer rows between sections are not selectable functions.
+        if selected_item.startswith('__spacer_'):
+            self.treeView.selection_remove(selected_item)
+            return
+
         # The selected tree item is a function id; resolve it to the panel for the current instrument.
         panel_key = FUNCTIONS.get(selected_item, {}).get(self.instrument)
 
-        if not panel_key or panel_key not in self.panels:
+        if not panel_key or panel_key not in self._panel_classes:
             # Hide all panels if a non-leaf node is selected
             for p in self.panels.values():
                 p.main.pack_forget()
+            self.landing.pack(fill=BOTH, expand=True)
             return
 
-        # Show the selected panel and hide others
+        # Show the selected panel (building it on first use) and hide the others.
+        self._ensure_panel(panel_key)
+        self.landing.pack_forget()
         for key, p in self.panels.items():
             if key == panel_key:
                 p.main.pack(fill=BOTH, expand=True)
                 # Pass control methods if needed
                 if hasattr(p, 'setData'):
                     p.setData(selected_item, self.updateTree)
-                if hasattr(p, 'set_language'):
-                    import inspect
-                    sig = inspect.signature(p.set_language)
-                    if len(sig.parameters) == 3: # Expects self, lang, lang_dict
-                        p.set_language(self.lang, LANGUAGES[self.lang])
-                    else: # Assumes old signature: self, lang
-                        p.set_language(self.lang)
             else:
                 p.main.pack_forget()
 
@@ -524,34 +640,59 @@ class MainWindow:
         self.lang = lang
         self.lang_var.set(lang)
         self.menu(self.root)
-        self.instrument_label.config(text=LANGUAGES[lang].get('instrument', 'Instrument'))
+        self.instrument_label.configure(text=LANGUAGES[lang].get('instrument', 'Instrument'))
+        self.lang_label.configure(text=LANGUAGES[lang]['language'])
+        self.theme_label.configure(text=LANGUAGES[lang]['theme'])
+        self.landing_title.configure(text=LANGUAGES[lang]['tree_root'])
+        self.landing_hint.configure(text=LANGUAGES[lang]['landing_hint'])
         self.recreate(self.treeView)
         for panel in self.panels.values():
-            if hasattr(panel, 'set_language'):
-                import inspect
-                sig = inspect.signature(panel.set_language)
-                if len(sig.parameters) == 3: # Expects self, lang, lang_dict
-                    panel.set_language(lang, LANGUAGES[lang])
-                else: # Assumes old signature: self, lang
-                    panel.set_language(lang)
-            if hasattr(panel, 'update_texts'): # For personality_stats
-                panel.update_texts(lang)
+            self._apply_language(panel)
 
     def on_lang_change(self, event=None):
         new_lang = self.lang_var.get()
         if new_lang != self.lang:
             self.set_language(new_lang)
 
+    def on_theme_change(self, event=None):
+        new_theme = self.theme_var.get()
+        if new_theme != self.current_theme:
+            self.change_theme(new_theme)
+
+    def _start_sidebar_resize(self, event):
+        self._resizing = True
+        self._resize_start_x = event.x_root
+        self._resize_start_width = self.sidebar.winfo_width()
+
+    def _resize_sidebar(self, event):
+        if not getattr(self, '_resizing', False):
+            return
+        new_width = self._resize_start_width + (event.x_root - self._resize_start_x)
+        new_width = max(theme.SIDEBAR_WIDTH - 60, min(theme.SIDEBAR_WIDTH + 260, new_width))
+        self.sidebar.configure(width=new_width)
+
+    def _end_sidebar_resize(self, event):
+        self._resizing = False
+
+    def change_theme(self, theme_name):
+        self.current_theme = theme_name
+        self.theme_var.set(theme_name)
+        theme.set_theme(theme_name)
+        self._configure_tree_tags(self.treeView)
+        # Icons are rendered with the theme's secondary color, so rebuild the tree
+        # to re-render them against the new theme.
+        self.recreate(self.treeView)
+        # Recolor any already-built matplotlib figures to match the new theme.
+        for panel in self.panels.values():
+            for attr in ('fig', 'figure'):
+                fig = getattr(panel, attr, None)
+                if fig is not None:
+                    theme.apply_mpl_theme(fig)
+                    if fig.canvas is not None:
+                        fig.canvas.draw_idle()
+
 if __name__ == "__main__":
-    root = Tk()
-    style = ttk.Style()
-
-    style.theme_use('clam')
-    style.configure('TFrame', background='#f0f0f0')
-    style.configure('TButton', font=('Helvetica', 12), background='#e0e0e0', foreground='black')
-    style.map('TButton', background=[('active', '#d0d0d0')])
-    style.configure('TLabel', background='#f0f0f0', font=('Helvetica', 12), foreground='black')
-
+    root = ttk.Window()
     app = MainWindow(root)
     root.state('zoomed')
     

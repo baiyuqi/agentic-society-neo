@@ -8,6 +8,7 @@ from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 
 from asociety.personality.analysis_utils import load_personality_data, PERSONALITY_TRAITS
+from studio import theme
 from studio.progress_dialog import ProgressManager
 
 
@@ -28,7 +29,7 @@ class StabilityAnalysisPanel:
         control_frame = ttk.Frame(self.main)
         control_frame.pack(fill=tk.X, padx=10, pady=10)
 
-        ttk.Label(control_frame, text=self.title, font=("Helvetica", 14, "bold")).pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Label(control_frame, text=self.title, font=theme.FONT_H3).pack(side=tk.LEFT, padx=(0, 20))
 
         self.run_button = ttk.Button(control_frame, text="运行分析", command=self.start_analysis)
         self.run_button.pack(side=tk.LEFT, padx=5)

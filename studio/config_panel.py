@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog, font
+from tkinter import ttk, messagebox, filedialog
 import json
 import os
 
@@ -21,17 +21,6 @@ class ConfigPanel(tk.Toplevel):
         self.title("Configuration")
         self.geometry("640x480")
         self.parent = parent
-
-        # --- Style and Font Configuration ---
-        self.default_font = font.nametofont("TkDefaultFont")
-        self.default_font.configure(family="Helvetica", size=11)
-
-        style = ttk.Style(self)
-        style.configure('TLabel', font=self.default_font)
-        style.configure('TButton', font=self.default_font)
-        style.configure('TEntry', font=self.default_font)
-        style.configure('TCombobox', font=self.default_font)
-        # --- End Style ---
 
         self.vars = {}
         self.instrument = None

@@ -63,7 +63,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "db_name",
-        help="The name of the database file in data/db/personality/ (e.g., 'deepseek-chat-single-5.db')."
+        help="The name of the database file in data/db/personality/ (e.g., 'individual/persona1/standard.db')."
     )
     args = parser.parse_args()
 

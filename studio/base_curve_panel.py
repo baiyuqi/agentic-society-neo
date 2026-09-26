@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 import os
 from asociety.personality.personality_analysis import compute, get_personas_ana
 from studio.languages import LANGUAGES
+from studio import theme
 
 class BaseCurvePanel(ABC):
     # --- Instrument surface -----------------------------------------------------------
@@ -31,24 +32,23 @@ class BaseCurvePanel(ABC):
 
     def __init__(self, parent):
         self.lang = 'zh'
-        self.main = ttk.Frame(parent)
+        self.main = ttk.Frame(parent, padding=theme.PAGE_PADDING)
 
         self.control_frame = self.create_control_frame(self.main)
         self.control_frame.pack(side=tk.BOTTOM, pady=10)
 
-        title_label = ttk.Label(self.main, text=self.get_panel_title(), font=("Helvetica", 16, "bold"))
-        title_label.pack(pady=(5, 5), side=tk.TOP)
+        theme.page_header(self.main, self.get_panel_title())
 
         paned_window = ttk.PanedWindow(self.main, orient=tk.VERTICAL)
         paned_window.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        self.plot_frame = ttk.Frame(paned_window, relief=tk.SUNKEN)
+        self.plot_frame = ttk.Frame(paned_window)
         paned_window.add(self.plot_frame, weight=3)
 
         table_frame = ttk.Frame(paned_window)
         paned_window.add(table_frame, weight=1)
 
-        table_title = ttk.Label(table_frame, text=LANGUAGES[self.lang]['distance_table_title'], font=("Helvetica", 12))
+        table_title = ttk.Label(table_frame, text=LANGUAGES[self.lang]['distance_table_title'])
         table_title.pack(pady=(5,5))
 
         self.table = ttk.Treeview(table_frame, columns=self.table_columns, show='headings')

@@ -165,7 +165,7 @@ class SingleMahalanobisPanel:
         
         # Create table with statistical metrics in title
         table_title = f"Distance Distribution (CV: {cv:.3f}, Kurtosis: {kurtosis:.3f})"
-        title_label = ttk.Label(self.data_frame, text=table_title, font=("Helvetica", 10, "bold"))
+        title_label = ttk.Label(self.data_frame, text=table_title)
         title_label.pack(pady=(0, 5))
 
         cols = ['Distance Range', 'Count', 'Probability Density']

@@ -5,22 +5,27 @@ import pandas as pd
 import os
 
 from studio.languages import LANGUAGES
+from studio import theme
 from asociety.morality import mfq
 
 
 class MoralityBrowser:
     def __init__(self, parent) -> None:
         self.lang = 'zh'
-        self.main = inner_panedwindow = ttk.PanedWindow(parent, orient=VERTICAL)
+        self.main = ttk.Frame(parent, padding=theme.PAGE_PADDING)
+        self.main.pack(fill=BOTH, expand=True)
+
+        self.title_label = ttk.Label(self.main, text=LANGUAGES[self.lang]['morality'],
+                                     font=theme.FONT_H2)
+        self.title_label.pack(anchor='w', pady=(0, theme.M))
+
+        inner_panedwindow = ttk.PanedWindow(self.main, orient=VERTICAL)
         inner_panedwindow.pack(fill=BOTH, expand=True)
 
-        self.top_frame = ttk.Frame(inner_panedwindow, width=400, height=500, relief=SUNKEN, style='TFrame')
-        bottom_frame = ttk.Frame(inner_panedwindow, width=400, height=200, relief=SUNKEN, style='TFrame')
+        self.top_frame = ttk.Frame(inner_panedwindow)
+        bottom_frame = ttk.Frame(inner_panedwindow)
         inner_panedwindow.add(self.top_frame, weight=2)
         inner_panedwindow.add(bottom_frame, weight=1)
-
-        self.title_label = ttk.Label(self.top_frame, text=LANGUAGES[self.lang]['morality'], font=("Helvetica", 16, "bold"))
-        self.title_label.pack(pady=(10, 0))
 
         self.canvas = None
         self.fig = None
@@ -29,11 +34,11 @@ class MoralityBrowser:
 
         # --- Control Frame ---
         control_frame = ttk.Frame(bottom_frame)
-        control_frame.pack(fill=X, pady=5)
+        control_frame.pack(fill=X, pady=(theme.S, theme.M))
         self.file_label = ttk.Label(control_frame, text="Selected File: None")
-        self.file_label.pack(side=LEFT, padx=10)
+        self.file_label.pack(side=LEFT, padx=(theme.S, 0))
         browse_button = ttk.Button(control_frame, text="Browse File...", command=self.browse_file)
-        browse_button.pack(side=LEFT, padx=10)
+        browse_button.pack(side=LEFT, padx=theme.S)
 
         # --- Table Frame ---
         table_frame = ttk.Frame(bottom_frame)

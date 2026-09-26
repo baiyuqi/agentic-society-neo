@@ -15,6 +15,7 @@ from asociety.personality.analysis_utils import (
     run_pca,
     PERSONALITY_TRAITS
 )
+from studio import theme
 from studio.progress_dialog import ProgressManager
 
 
@@ -38,7 +39,7 @@ class FileClusteringPanel:
         control_frame = ttk.Frame(self.main)
         control_frame.pack(fill=tk.X, padx=10, pady=10)
 
-        title_label = ttk.Label(control_frame, text="选择文件聚类 (多文件)", font=("Helvetica", 14, "bold"))
+        title_label = ttk.Label(control_frame, text="选择文件聚类 (多文件)", font=theme.FONT_H3)
         title_label.pack(side=tk.LEFT, padx=(0, 20))
 
         self.save_button = ttk.Button(control_frame, text="Save to SVG", command=self.save_to_svg, state=tk.DISABLED)
