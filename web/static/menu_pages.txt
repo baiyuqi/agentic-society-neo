@@ -1,0 +1,12 @@
+ /pages/analysis/antialign_comparison.html
+ /pages/analysis/clustering-vue3.html
+ /pages/analysis/curve_comparison.html
+ /pages/analysis/identifiability.html
+ /pages/analysis/mahalanobis-vue3.html
+ /pages/analysis/multi_mahalanobis.html
+ /pages/analysis/narrative_comparison.html
+ /pages/analysis/personality-vue3.html
+ /pages/analysis/raw_comparison.html
+ /pages/personality/browse-vue3.html
+ /pages/personality/stats-vue3.html
+ /pages/personas/list-vue3.html

@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>性格浏览 - Agentic Society</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/file-tree-component.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+        }
+        .table {
+            font-size: 0.9rem;
+        }
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            color: #495057;
+        }
+        .chart-container {
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        .persona-row:hover {
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+        .persona-row.selected {
+            background-color: #e3f2fd;
+        }
+
+        /* Sliding Panel Styles */
+        .sliding-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: auto;
+            max-height: 100vh;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .sliding-panel.open {
+            right: 0;
+        }
+
+        .panel-toggle {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px 0 0 5px;
+            padding: 10px 5px;
+            cursor: pointer;
+            z-index: 1001;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        .panel-toggle:hover {
+            background: #5a67d8;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .panel-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        .panel-close:hover {
+            color: #495057;
+        }
+
+        .chart-container-panel {
+            height: 200px;
+            margin-bottom: 15px;
+        }
+
+        /* Compact personality summary */
+        .personality-summary-compact {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .trait-score-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 5px;
+            min-width: 60px;
+        }
+
+        .trait-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 2px;
+        }
+
+        .trait-value {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #667eea;
+            background: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+
+        /* Grid charts layout - 1 column, 5 rows */
+        .charts-grid-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(5, auto);
+            gap: 8px;
+            max-height: 500px;
+            overflow: hidden;
+        }
+
+        .chart-grid-item {
+            height: 80px;
+            position: relative;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* 左对齐 */
+        }
+
+        .chart-grid-item canvas {
+            width: 100% !important;
+            height: 100% !important;
+            margin-left: 0 !important; /* 确保左对齐 */
+        }
+
+        .personality-details {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .detail-value {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container-fluid">
+            <!-- Database Selection -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-database me-2"></i>选择数据源</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择模型数据库:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" readonly
+                                   :value="selectedDatabase ? getDbDisplayName(selectedDatabase) : '请选择数据库...'"
+                                   placeholder="请选择数据库...">
+                            <button class="btn btn-outline-secondary" type="button" @click="openFileTree">
+                                <i class="bi bi-folder"></i> 浏览
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Tree Component -->
+            <file-tree ref="fileTreeRef"
+                       modal-title="选择数据源"
+                       search-placeholder="搜索文件或目录..."
+                       file-extension=".db"
+                       :allow-directory-selection="true"
+                       @selected="onFileSelected">
+            </file-tree>
+
+            <!-- Main Content -->
+            <div v-if="selectedDatabase">
+                <!-- Header -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-person-badge me-2"></i>性格浏览</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted">当前数据库: {{ getCurrentDbName() }}</span>
+                            <div class="btn-group">
+                                <button class="btn btn-outline-primary btn-sm" @click="loadPersonas">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" @click="selectedDatabase = ''">
+                                    <i class="bi bi-database me-1"></i>更换数据源
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="loading" class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                        <div v-else-if="error" class="alert alert-danger">
+                            {{ error }}
+                        </div>
+                        <div v-else>
+                            <!-- Personas Table -->
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>年龄</th>
+                                            <th>性别</th>
+                                            <th>职业</th>
+                                            <th>开放性</th>
+                                            <th>尽责性</th>
+                                            <th>外向性</th>
+                                            <th>宜人性</th>
+                                            <th>神经质</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="persona in personas" :key="persona.id"
+                                            :class="{'persona-row': true, 'selected': selectedPersona && selectedPersona.id === persona.id}"
+                                            @click="selectPersona(persona)">
+                                            <td>{{ persona.id }}</td>
+                                            <td>{{ persona.age }}</td>
+                                            <td>{{ persona.gender }}</td>
+                                            <td>{{ persona.occupation }}</td>
+                                            <td>{{ persona.openness ? persona.openness.toFixed(2) : 'N/A' }}</td>
+                                            <td>{{ persona.conscientiousness ? persona.conscientiousness.toFixed(2) : 'N/A' }}</td>
+                                            <td>{{ persona.extraversion ? persona.extraversion.toFixed(2) : 'N/A' }}</td>
+                                            <td>{{ persona.agreeableness ? persona.agreeableness.toFixed(2) : 'N/A' }}</td>
+                                            <td>{{ persona.neuroticism ? persona.neuroticism.toFixed(2) : 'N/A' }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div v-if="personas.length === 0" class="text-center text-muted mt-5">
+                                <i class="bi bi-people display-4"></i>
+                                <p class="mt-3">没有找到角色数据</p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sliding Panel for Charts -->
+        <button class="panel-toggle" @click="togglePanel" v-if="selectedPersona">
+            <i class="bi" :class="panelOpen ? 'bi-chevron-right' : 'bi-chevron-left'"></i>
+        </button>
+
+        <div class="sliding-panel" :class="{open: panelOpen}" v-if="selectedPersona">
+            <div class="panel-header">
+                <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>性格分析</h6>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary me-2" @click="forceRedrawPanelCharts" title="重绘图表">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <button class="panel-close" @click="closePanel">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Personality Summary -->
+            <div class="personality-summary-compact">
+                <h6 class="mb-2">性格维度得分</h6>
+                <div class="d-flex justify-content-between flex-wrap">
+                    <div v-for="(score, trait) in personalitySummary" :key="trait" class="trait-score-item">
+                        <span class="trait-label">{{ getTraitName(trait) }}</span>
+                        <span class="trait-value">{{ score.toFixed(1) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Individual Trait Charts - Grid Layout -->
+            <div class="charts-grid-container">
+                <div v-for="(chart, index) in panelCharts" :key="index" class="chart-grid-item">
+                    <canvas :id="'panelChart' + index"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Tree Component Template -->
+    <script type="text/x-template" id="file-tree-template">
+        <div class="file-tree-container">
+            <!-- Modal for file selection -->
+            <div class="modal fade" id="fileTreeModal" tabindex="-1" aria-labelledby="fileTreeModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="fileTreeModalLabel">
+                                <i class="bi bi-folder me-2"></i>{{ modalTitle }}
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- Search box -->
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" v-model="searchQuery"
+                                           :placeholder="searchPlaceholder" @input="filterTree">
+                                    <button class="btn btn-outline-secondary" type="button" @click="clearSearch">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- File tree -->
+                            <div class="file-tree" style="max-height: 400px; overflow-y: auto;">
+                                <div v-if="loading" class="text-center py-3">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">加载中...</span>
+                                    </div>
+                                </div>
+                                <div v-else-if="filteredItems.length === 0" class="text-center py-3 text-muted">
+                                    <i class="bi bi-folder-x display-4"></i>
+                                    <p class="mt-2">没有找到匹配的文件</p>
+                                </div>
+                                <ul v-else class="list-unstyled" v-html="renderFileTree(filteredItems)"></ul>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <!-- 选择类型切换 -->
+                            <div class="me-auto" v-if="allowDirectorySelection">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <input type="radio" class="btn-check" name="selectionType" id="selectFile" :checked="selectionType === 'file'" @change="handleSelectionTypeChange('file')">
+                                    <label class="btn btn-outline-primary" for="selectFile">选择文件</label>
+                                    <input type="radio" class="btn-check" name="selectionType" id="selectDirectory" :checked="selectionType === 'directory'" @change="handleSelectionTypeChange('directory')">
+                                    <label class="btn btn-outline-primary" for="selectDirectory">选择目录</label>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                            <button type="button" class="btn btn-primary" @click="confirmSelection" :disabled="!selectedFile">
+                                确认选择
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+</div>
+
+<script>
+const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+
+const app = createApp({
+    components: {
+        'file-tree': FileTreeComponent
+    },
+    setup() {
+                const databases = ref([]);
+                const selectedDatabase = ref('');
+                const personas = ref([]);
+                const selectedPersona = ref(null);
+                const loading = ref(false);
+                const error = ref(null);
+                const panelOpen = ref(false);
+                const personalitySummary = ref({});
+                const panelCharts = ref([]);
+                const chartObjects = reactive({});
+                const fileTreeRef = ref(null);
+
+                // 获取数据库显示名称
+                const getDbDisplayName = (path) => {
+                    const db = databases.value.find(db => db.path === path);
+                    return db ? db.name : path;
+                };
+
+                const loadDatabases = async () => {
+                    try {
+                        const response = await fetch('/api/databases');
+                        databases.value = await response.json();
+                    } catch (err) {
+                        error.value = '加载数据库列表失败: ' + err.message;
+                    }
+                };
+
+                // 打开文件树模态框
+                const openFileTree = () => {
+                    if (fileTreeRef.value) {
+                        fileTreeRef.value.open();
+                    }
+                };
+
+                // 文件选择回调
+                const onFileSelected = (file) => {
+                    if (file && file.path) {
+                        selectedDatabase.value = file.path;
+                        loadPersonas();
+                    }
+                };
+
+                const loadPersonas = async () => {
+                    if (!selectedDatabase.value) return;
+
+                    try {
+                        loading.value = true;
+                        error.value = null;
+                        selectedPersona.value = null;
+
+                        const response = await fetch(`/api/personas?db=${encodeURIComponent(selectedDatabase.value)}`);
+                        if (!response.ok) {
+                            throw new Error('获取角色列表失败');
+                        }
+
+                        personas.value = await response.json();
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const selectPersona = (persona) => {
+                    selectedPersona.value = persona;
+
+                    // 自动打开推拉窗口
+                    if (!panelOpen.value) {
+                        panelOpen.value = true;
+                    }
+
+                    // 添加延迟确保DOM完全更新
+                    setTimeout(() => {
+                        if (selectedPersona.value && selectedPersona.value.personality_json) {
+                            try {
+                                const personalityData = JSON.parse(selectedPersona.value.personality_json);
+                                personalitySummary.value = calculatePersonalitySummary(personalityData);
+                                preparePanelChartData(personalityData);
+
+                                // 延迟渲染确保推拉窗口完全打开
+                                setTimeout(() => {
+                                    renderAllPanelCharts();
+                                }, 150);
+                            } catch (err) {
+                                console.error('Error updating panel data:', err);
+                            }
+                        }
+                    }, 50);
+                };
+
+                const renderCharts = () => {
+                    // 底部图表已移除，此函数不再需要
+                };
+
+                const destroyCharts = () => {
+                    // 底部图表已移除，此函数不再需要
+                };
+
+                const getCurrentDbName = () => {
+                    const db = databases.value.find(db => db.path === selectedDatabase.value);
+                    return db ? db.name : '';
+                };
+
+                const togglePanel = () => {
+                    panelOpen.value = !panelOpen.value;
+                    if (panelOpen.value) {
+                        // 延迟渲染确保推拉窗口完全打开
+                        setTimeout(() => {
+                            renderPanelCharts();
+                        }, 150);
+                    }
+                };
+
+                const closePanel = () => {
+                    panelOpen.value = false;
+                };
+
+                // 强制重绘所有面板图表
+                const forceRedrawPanelCharts = () => {
+                    if (panelOpen.value && selectedPersona.value) {
+                        renderAllPanelCharts();
+                    }
+                };
+
+                const getTraitName = (traitKey) => {
+                    const traitNames = {
+                        'extraversion': '外向性',
+                        'agreeableness': '宜人性',
+                        'conscientiousness': '尽责性',
+                        'neuroticism': '神经质',
+                        'openness': '开放性'
+                    };
+                    return traitNames[traitKey] || traitKey;
+                };
+
+                const calculatePersonalitySummary = (personalityData) => {
+                    const personalities = personalityData.person.result.personalities;
+                    const summary = {};
+
+                    personalities.forEach((trait) => {
+                        const traitKey = Object.keys(trait)[0];
+                        const traitData = trait[traitKey];
+
+                        if (traitData.traits && traitData.traits.length > 0) {
+                            const totalScore = traitData.traits.reduce((sum, subTrait) => {
+                                const subTraitValue = Object.values(subTrait)[1];
+                                return sum + (Number(subTraitValue) || 0);
+                            }, 0);
+                            summary[traitKey] = totalScore / traitData.traits.length;
+                        } else {
+                            summary[traitKey] = 0;
+                        }
+                    });
+
+                    return summary;
+                };
+
+                const renderPanelCharts = () => {
+                    if (!selectedPersona.value || !selectedPersona.value.personality_json) return;
+
+                    try {
+                        const personalityData = JSON.parse(selectedPersona.value.personality_json);
+                        personalitySummary.value = calculatePersonalitySummary(personalityData);
+                        preparePanelChartData(personalityData);
+
+                        // 延迟渲染确保数据准备完成
+                        setTimeout(() => {
+                            renderAllPanelCharts();
+                        }, 50);
+                    } catch (err) {
+                        console.error('Error preparing panel charts:', err);
+                    }
+                };
+
+                const preparePanelChartData = (personalityData) => {
+                    const personalities = personalityData.person.result.personalities;
+
+                    const traitNames = {
+                        extraversion: ['Friendliness', 'Gregariousness', 'Assertiveness', 'Activity Level', 'Excitement-Seeking', 'Cheerfulness'],
+                        agreeableness: ['Trust', 'Morality', 'Altruism', 'Cooperation', 'Modesty', 'Sympathy'],
+                        conscientiousness: ['Self-Efficacy', 'Orderliness', 'Dutifulness', 'Achievement-Striving', 'Self-Discipline', 'Cautiousness'],
+                        neuroticism: ['Anxiety', 'Anger', 'Depression', 'Self-Consciousness', 'Immoderation', 'Vulnerability'],
+                        openness: ['Imagination', 'Artistic Interests', 'Emotionality', 'Adventurousness', 'Intellect', 'Liberalism']
+                    };
+
+                    const colors = ['#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#1f77b4'];
+
+                    panelCharts.value = personalities.map((trait, index) => {
+                        const traitKey = Object.keys(trait)[0];
+                        const traitData = trait[traitKey];
+
+                        return {
+                            title: getTraitName(traitKey),
+                            data: traitData.traits.map((subTrait, i) => ({
+                                label: traitNames[traitKey][i],
+                                value: Math.round(Object.values(subTrait)[1])
+                            })),
+                            color: colors[index]
+                        };
+                    });
+                };
+
+                const renderAllPanelCharts = () => {
+                    destroyPanelCharts();
+
+                    // 延迟渲染每个图表，避免同时创建导致的资源竞争
+                    panelCharts.value.forEach((chartData, index) => {
+                        setTimeout(() => {
+                            renderPanelChart(index, chartData);
+                        }, index * 50); // 间隔50ms创建每个图表
+                    });
+                };
+
+                const renderPanelChart = (index, chartData, retryCount = 0) => {
+                    const canvasId = 'panelChart' + index;
+                    const ctx = document.getElementById(canvasId);
+
+                    if (!ctx) {
+                        console.log('Canvas not found for', canvasId);
+                        if (retryCount < 5) {
+                            setTimeout(() => renderPanelChart(index, chartData, retryCount + 1), 100);
+                        }
+                        return;
+                    }
+
+                    try {
+                        // 先销毁已存在的图表
+                        if (chartObjects[canvasId]) {
+                            chartObjects[canvasId].destroy();
+                            delete chartObjects[canvasId];
+                        }
+
+                        // 确保canvas有正确的尺寸
+                        const container = ctx.parentElement;
+                        if (container && container.offsetWidth > 0 && container.offsetHeight > 0) {
+                            ctx.width = container.offsetWidth;
+                            ctx.height = container.offsetHeight;
+                        }
+
+                        // 优化的横向柱状图配置
+                        const chart = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: chartData.data.map(d => d.label),
+                                datasets: [{
+                                    label: chartData.title,
+                                    data: chartData.data.map(d => d.value),
+                                    backgroundColor: chartData.color,
+                                    borderColor: chartData.color,
+                                    borderWidth: 1,
+                                    barPercentage: 0.9, // 增大柱状图宽度
+                                    categoryPercentage: 0.9 // 减小类别间距，缝隙约为柱宽度的1/10
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y', // 横向柱状图
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                animation: {
+                                    duration: 0 // 禁用动画避免初始化问题
+                                },
+                                scales: {
+                                    x: {
+                                        beginAtZero: true,
+                                        min: 0,
+                                        max: 100,
+                                        display: true, // 显示X轴
+                                        grid: {
+                                            display: true,
+                                            color: 'rgba(0,0,0,0.1)'
+                                        },
+                                        ticks: {
+                                            font: {
+                                                size: 9
+                                            },
+                                            stepSize: 20
+                                        }
+                                    },
+                                    y: {
+                                        ticks: {
+                                            font: {
+                                                size: 8 // 减小字体适应单列布局
+                                            },
+                                            maxRotation: 0,
+                                            align: 'start', // 左对齐
+                                            padding: 5
+                                        },
+                                        grid: {
+                                            display: false
+                                        },
+                                        afterFit: function(scale) {
+                                            scale.width = 80; // 减小Y轴宽度，让图表更靠左
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: chartData.title,
+                                        font: {
+                                            size: 10,
+                                            weight: 'bold'
+                                        },
+                                        padding: 3
+                                    },
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        enabled: true,
+                                        callbacks: {
+                                            label: function(context) {
+                                                return `${context.dataset.label}: ${context.parsed.x}`;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        chartObjects[canvasId] = chart;
+                        console.log('Panel chart created successfully:', canvasId);
+                    } catch (err) {
+                        console.error('Error creating panel chart:', canvasId, err);
+                        if (retryCount < 3) {
+                            setTimeout(() => renderPanelChart(index, chartData, retryCount + 1), 200);
+                        }
+                    }
+                };
+
+                const destroyPanelCharts = () => {
+                    Object.keys(chartObjects).forEach(key => {
+                        if (key.startsWith('panelChart') && chartObjects[key]) {
+                            chartObjects[key].destroy();
+                            delete chartObjects[key];
+                        }
+                    });
+                };
+
+                onMounted(async () => {
+                    await loadDatabases();
+                });
+
+                return {
+                    databases,
+                    selectedDatabase,
+                    personas,
+                    selectedPersona,
+                    loading,
+                    error,
+                    panelOpen,
+                    personalitySummary,
+                    panelCharts,
+                    fileTreeRef,
+                    loadDatabases,
+                    loadPersonas,
+                    selectPersona,
+                    getCurrentDbName,
+                    togglePanel,
+                    closePanel,
+                    getTraitName,
+                    renderPanelCharts,
+                    renderAllPanelCharts,
+                    forceRedrawPanelCharts,
+                    openFileTree,
+                    onFileSelected,
+                    getDbDisplayName
+                };
+            }
+        });
+
+        app.mount('#app');
+</script>
+</body>
+</html>

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>马氏距离分析 - Agentic Society</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/file-tree-component.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+        }
+        .chart-container {
+            position: relative;
+            min-height: 400px;
+            margin-bottom: 20px;
+        }
+        .control-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .stats-table {
+            font-size: 0.9rem;
+        }
+        .stats-table th {
+            background-color: #e9ecef;
+            font-weight: 600;
+        }
+        .histogram-table {
+            font-size: 0.8rem;
+        }
+        .histogram-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        /* File Tree Styles */
+        .file-tree-node {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .file-tree-node:hover {
+            background-color: #f8f9fa;
+        }
+        .file-tree-node.selected {
+            background-color: #e3f2fd;
+            border-left: 3px solid #2196f3;
+        }
+        .file-tree-node .bi {
+            color: #6c757d;
+        }
+        .file-tree-node.selected .bi {
+            color: #2196f3;
+        }
+        .file-tree-container .modal-body {
+            max-height: 60vh;
+            overflow: hidden;
+        }
+        .file-tree {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container-fluid">
+            <!-- Header -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-graph-up me-2"></i>马氏距离分析</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Control Panel -->
+                    <div class="control-panel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">选择模型数据库:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" readonly
+                                           :value="selectedDatabase ? getDbDisplayName(selectedDatabase) : '请选择数据库...'"
+                                           placeholder="请选择数据库...">
+                                    <button class="btn btn-outline-secondary" type="button" @click="openFileTree">
+                                        <i class="bi bi-folder"></i> 浏览
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">分析状态:</label>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge" :class="analysisStatus.class">
+                                        {{ analysisStatus.text }}
+                                    </span>
+                                    <button class="btn btn-outline-info btn-sm ms-2" @click="testChart" v-if="!analysisComplete">
+                                        <i class="bi bi-bug me-1"></i>测试图表
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button class="btn btn-primary" @click="runAnalysis" :disabled="!selectedDatabase || loading">
+                                    <i class="bi bi-play-circle me-1"></i>运行分析
+                                </button>
+                                <button class="btn btn-outline-secondary ms-2" @click="forceRedrawChart" :disabled="!analysisComplete">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>重绘图表
+                                </button>
+                                <button class="btn btn-outline-success ms-2" @click="copyDataToClipboard" :disabled="!analysisComplete">
+                                    <i class="bi bi-clipboard me-1"></i>复制数据
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="loading" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </div>
+
+                    <div v-else-if="error" class="alert alert-danger">
+                        {{ error }}
+                    </div>
+
+                    <!-- Analysis Results -->
+                    <div v-if="analysisComplete" class="mt-4">
+                        <!-- Histogram Chart -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="bi bi-bar-chart me-2"></i>马氏距离分布直方图 - {{ profileName }}</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="mahalanobisChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Statistics Table -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6><i class="bi bi-table me-2"></i>统计分析结果</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped stats-table">
+                                        <thead>
+                                            <tr>
+                                                <th>统计指标</th>
+                                                <th>数值</th>
+                                                <th>说明</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>变异系数</td>
+                                                <td><strong>{{ statistics.variation_coefficient.toFixed(4) }}</strong></td>
+                                                <td>数据离散程度的相对度量，越小表示一致性越好</td>
+                                            </tr>
+                                            <tr>
+                                                <td>峰度</td>
+                                                <td><strong>{{ statistics.kurtosis.toFixed(4) }}</strong></td>
+                                                <td>分布形态的度量，正值表示尖峰，负值表示平峰</td>
+                                            </tr>
+                                            <tr>
+                                                <td>平均值</td>
+                                                <td><strong>{{ statistics.mean.toFixed(4) }}</strong></td>
+                                                <td>马氏距离的平均值</td>
+                                            </tr>
+                                            <tr>
+                                                <td>标准差</td>
+                                                <td><strong>{{ statistics.std.toFixed(4) }}</strong></td>
+                                                <td>马氏距离的离散程度</td>
+                                            </tr>
+                                            <tr>
+                                                <td>最小值</td>
+                                                <td><strong>{{ statistics.min.toFixed(4) }}</strong></td>
+                                                <td>最小马氏距离</td>
+                                            </tr>
+                                            <tr>
+                                                <td>最大值</td>
+                                                <td><strong>{{ statistics.max.toFixed(4) }}</strong></td>
+                                                <td>最大马氏距离</td>
+                                            </tr>
+                                            <tr>
+                                                <td>样本数量</td>
+                                                <td><strong>{{ statistics.count }}</strong></td>
+                                                <td>分析的数据点总数</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Histogram Data Table -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6><i class="bi bi-list-ul me-2"></i>直方图数据详情</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped histogram-table">
+                                        <thead>
+                                            <tr>
+                                                <th>距离区间</th>
+                                                <th>频数</th>
+                                                <th>概率密度</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(bin, index) in histogram.bins" :key="index">
+                                                <td>{{ bin }}</td>
+                                                <td>{{ histogram.counts[index] }}</td>
+                                                <td>{{ histogram.probabilities[index].toFixed(4) }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="selectedDatabase" class="text-center text-muted mt-5">
+                        <i class="bi bi-graph-up display-4"></i>
+                        <p class="mt-3">点击"运行分析"开始马氏距离分析</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Tree Component -->
+        <file-tree ref="fileTreeRef"
+                   modal-title="选择数据源"
+                   search-placeholder="搜索文件或目录..."
+                   file-extension=".db"
+                   :allow-directory-selection="true"
+                   @selected="onFileSelected">
+        </file-tree>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+
+        const app = createApp({
+            components: {
+                'file-tree': FileTreeComponent
+            },
+            setup() {
+                const databases = ref([]);
+                const selectedDatabase = ref('');
+                const loading = ref(false);
+                const error = ref(null);
+                const analysisComplete = ref(false);
+                const statistics = ref({});
+                const histogram = ref({ bins: [], counts: [], probabilities: [] });
+                const profileName = ref('');
+                const chartObject = ref(null);
+                const fileTreeRef = ref(null);
+
+                // 分析状态计算属性
+                const analysisStatus = computed(() => {
+                    if (loading.value) {
+                        return { text: '分析中...', class: 'bg-warning' };
+                    } else if (analysisComplete.value) {
+                        return { text: '分析完成', class: 'bg-success' };
+                    } else if (selectedDatabase.value) {
+                        return { text: '准备分析', class: 'bg-info' };
+                    } else {
+                        return { text: '请选择数据库', class: 'bg-secondary' };
+                    }
+                });
+
+                // 获取数据库显示名称
+                const getDbDisplayName = (path) => {
+                    const db = databases.value.find(db => db.path === path);
+                    return db ? db.name : path;
+                };
+
+                const loadDatabases = async () => {
+                    try {
+                        const response = await fetch('/api/databases');
+                        databases.value = await response.json();
+                    } catch (err) {
+                        error.value = '加载数据库列表失败: ' + err.message;
+                    }
+                };
+
+                // 打开文件树模态框
+                const openFileTree = () => {
+                    if (fileTreeRef.value) {
+                        fileTreeRef.value.open();
+                    }
+                };
+
+                // 文件选择回调
+                const onFileSelected = (file) => {
+                    if (file && file.path) {
+                        selectedDatabase.value = file.path;
+                        onDatabaseChange();
+                    }
+                };
+
+                const onDatabaseChange = () => {
+                    analysisComplete.value = false;
+                    destroyChart();
+                };
+
+                const runAnalysis = async () => {
+                    if (!selectedDatabase.value) return;
+
+                    try {
+                        loading.value = true;
+                        error.value = null;
+                        analysisComplete.value = false;
+                        destroyChart();
+
+                        // 确保ChartJS库已加载
+                        if (typeof Chart === 'undefined') {
+                            throw new Error('ChartJS库未正确加载，请刷新页面重试');
+                        }
+
+                        // 调用后端API进行分析
+                        const response = await fetch('/api/analysis/mahalanobis', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                db_path: selectedDatabase.value
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('马氏距离分析失败');
+                        }
+
+                        const result = await response.json();
+
+                        // 更新数据
+                        statistics.value = result.statistics;
+                        histogram.value = result.histogram;
+                        profileName.value = result.profile_name;
+
+                        // 等待一小段时间确保DOM完全渲染
+                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        // 渲染图表
+                        renderChart(result);
+                        analysisComplete.value = true;
+
+                    } catch (err) {
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const renderChart = (result) => {
+                    destroyChart();
+
+                    // 使用重试机制创建图表
+                    const createChartWithRetry = (retryCount = 0) => {
+                        const ctx = document.getElementById('mahalanobisChart');
+                        if (!ctx) {
+                            console.log('Canvas element not found, retrying...');
+                            if (retryCount < 3) {
+                                setTimeout(() => createChartWithRetry(retryCount + 1), 100);
+                            }
+                            return;
+                        }
+
+                        try {
+                            const histogramData = result.histogram;
+                            const binEdges = histogramData.bin_edges;
+                            const counts = histogramData.counts;
+
+                            // 创建bin中心点作为x轴标签
+                            const binCenters = [];
+                            for (let i = 0; i < binEdges.length - 1; i++) {
+                                binCenters.push((binEdges[i] + binEdges[i + 1]) / 2);
+                            }
+
+                            // 确保canvas有正确的尺寸
+                            const container = ctx.parentElement;
+                            if (container && container.offsetWidth > 0 && container.offsetHeight > 0) {
+                                ctx.width = container.offsetWidth;
+                                ctx.height = container.offsetHeight;
+                            }
+
+                            const chart = new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: binCenters.map(x => x.toFixed(4)),
+                                    datasets: [{
+                                        label: '马氏距离分布',
+                                        data: counts,
+                                        backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                                        borderColor: 'rgba(102, 126, 234, 1)',
+                                        borderWidth: 1
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    animation: {
+                                        duration: 0 // 禁用动画避免初始化问题
+                                    },
+                                    plugins: {
+                                        title: {
+                                            display: true,
+                                            text: '马氏距离概率分布直方图',
+                                            font: {
+                                                size: 16,
+                                                weight: 'bold'
+                                            }
+                                        },
+                                        legend: {
+                                            display: false
+                                        }
+                                    },
+                                    scales: {
+                                        x: {
+                                            title: {
+                                                display: true,
+                                                text: '马氏距离'
+                                            },
+                                            ticks: {
+                                                maxRotation: 45,
+                                                minRotation: 45
+                                            }
+                                        },
+                                        y: {
+                                            title: {
+                                                display: true,
+                                                text: '频数'
+                                            },
+                                            beginAtZero: true
+                                        }
+                                    }
+                                }
+                            });
+
+                            chartObject.value = chart;
+                            console.log('Mahalanobis chart created successfully');
+                        } catch (err) {
+                            console.error('Error creating chart:', err);
+                            if (retryCount < 3) {
+                                setTimeout(() => createChartWithRetry(retryCount + 1), 200);
+                            } else {
+                                error.value = '图表创建失败: ' + err.message;
+                            }
+                        }
+                    };
+
+                    // 延迟创建图表，确保DOM完全加载
+                    setTimeout(() => {
+                        createChartWithRetry();
+                    }, 100);
+                };
+
+                const destroyChart = () => {
+                    if (chartObject.value) {
+                        try {
+                            chartObject.value.destroy();
+                        } catch (err) {
+                            console.warn('Error destroying chart:', err);
+                        }
+                        chartObject.value = null;
+                    }
+                };
+
+                const forceRedrawChart = () => {
+                    if (chartObject.value) {
+                        try {
+                            chartObject.value.update();
+                        } catch (err) {
+                            console.warn('Error updating chart:', err);
+                        }
+                    }
+                };
+
+                const copyDataToClipboard = async () => {
+                    try {
+                        const dataToCopy = {
+                            profile_name: profileName.value,
+                            statistics: statistics.value,
+                            histogram: histogram.value
+                        };
+
+                        const jsonData = JSON.stringify(dataToCopy, null, 2);
+                        await navigator.clipboard.writeText(jsonData);
+                        alert('数据已复制到剪贴板');
+                    } catch (err) {
+                        alert('复制失败: ' + err.message);
+                    }
+                };
+
+                const testChart = () => {
+                    // Test function to check if Chart.js is working
+                    const testCtx = document.createElement('canvas');
+                    testCtx.width = 400;
+                    testCtx.height = 300;
+                    document.body.appendChild(testCtx);
+
+                    try {
+                        const testChart = new Chart(testCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: ['A', 'B', 'C', 'D', 'E'],
+                                datasets: [{
+                                    label: 'Test Data',
+                                    data: [10, 20, 30, 40, 50],
+                                    backgroundColor: 'blue',
+                                    borderWidth: 2
+                                }]
+                            },
+                            options: {
+                                responsive: true
+                            }
+                        });
+                        console.log('Test chart created successfully');
+                        alert('ChartJS测试图表创建成功！');
+                    } catch (err) {
+                        console.error('Test chart error:', err);
+                        alert('ChartJS测试失败：' + err.message);
+                    }
+                };
+
+                onMounted(async () => {
+                    await loadDatabases();
+                });
+
+                return {
+                    databases,
+                    selectedDatabase,
+                    loading,
+                    error,
+                    analysisComplete,
+                    statistics,
+                    histogram,
+                    profileName,
+                    analysisStatus,
+                    fileTreeRef,
+                    getDbDisplayName,
+                    loadDatabases,
+                    openFileTree,
+                    onFileSelected,
+                    onDatabaseChange,
+                    runAnalysis,
+                    renderChart,
+                    destroyChart,
+                    forceRedrawChart,
+                    copyDataToClipboard,
+                    testChart
+                };
+            }
+        });
+
+        app.mount('#app');
+    </script>
+</body>
+</html>
