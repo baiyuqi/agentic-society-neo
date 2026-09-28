@@ -13,7 +13,7 @@ import matplotlib
 
 # --- Spacing scale (px) --------------------------------------------------------
 XS, S, M, L, XL, XXL = 4, 8, 12, 16, 24, 32
-SIDEBAR_WIDTH = 260
+SIDEBAR_WIDTH = 450
 PAGE_PADDING = 24
 
 # --- Typography scale ----------------------------------------------------------
